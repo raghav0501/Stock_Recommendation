@@ -479,8 +479,8 @@ export function StockDetailPage({ indicators }: StockDetailPageProps) {
       <Card className="w-full bg-gradient-to-r from-light-accent-primary/10 to-light-accent-secondary/10 dark:from-dark-accent-primary/10 dark:to-dark-accent-secondary/10 border border-light-border-primary dark:border-dark-border-primary">
         <h3 className="text-lg font-semibold text-light-text-primary dark:text-dark-text-primary mb-2">
           {selectedChartableNames.length > 0
-            ? `Summary based on ${selectedChartableNames.join(', ')}`
-            : 'Summary'}
+            ? `Summary based on ${selectedChartableNames.join(', ')} (AI Generated)`
+            : 'Summary (AI Generated'}
         </h3>
         <p className="text-sm text-light-text-secondary dark:text-dark-text-secondary">
           <Markdown>
@@ -609,7 +609,7 @@ export function StockDetailPage({ indicators }: StockDetailPageProps) {
       {/* News Summary */}
       <Card className="w-full bg-gradient-to-r from-light-accent-primary/10 to-light-accent-secondary/10 dark:from-dark-accent-primary/10 dark:to-dark-accent-secondary/10 border border-light-border-primary dark:border-dark-border-primary">
         <h3 className="text-lg font-semibold text-light-text-primary dark:text-dark-text-primary mb-2">
-          News Summary
+          News Summary (AI Generated)
         </h3>
         {stockNewsLoading ? (
           <div className="flex items-center justify-center h-32">
