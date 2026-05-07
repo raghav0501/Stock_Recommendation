@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Activity, TrendingUp, Briefcase, Sun, Moon, Menu, X, LogOut, Settings, User, UserCircle } from 'lucide-react';
+import { Activity, TrendingUp, Briefcase, Sun, Moon, Menu, X, LogOut, Settings, User, UserCircle, BookMarked, FlaskConical } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useTheme } from '../config/ThemeContext';
 import { useAuth } from '../config/AuthContext';
@@ -22,9 +22,10 @@ export function Header() {
 
   const isActive = (path: string) => location.pathname === path || location.pathname.startsWith(path + '/');
 
-  const navItems = [  
+  const navItems = [
     { path: '/technical-indicators', label: 'Indicators', icon: <Activity className="w-4 h-4" /> },
     { path: '/stocks', label: 'Stocks', icon: <TrendingUp className="w-4 h-4" /> },
+    { path: '/watchlist', label: 'Watchlist', icon: <BookMarked className="w-4 h-4" /> },
   ];
 
   useEffect(() => {
@@ -161,6 +162,13 @@ export function Header() {
                     className='cursor-not-allowed'
                   >
                     Portfolio
+                  </DropdownItem>
+
+                  <DropdownItem
+                    icon={<FlaskConical className="w-4 h-4" />}
+                    onClick={() => navigate('/backtest')}
+                  >
+                    Backtest
                   </DropdownItem>
 
                   <DropdownDivider />

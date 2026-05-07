@@ -1,0 +1,169 @@
+{
+  "status": "success",
+  "data": {
+    "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIwNGIyYzBjMy1hY2ZjLTRjZmMtYTQxZS1hZjAxZmJjMzljNzciLCJyb2xlIjoicHJlbWl1bSIsImlhdCI6MTc3ODA1NzY3MywiZXhwIjoxNzc4MDU4NTczfQ.ahg8mBbctDTNh-Qp-rSrRIjF5UcVhzInuqYd2veCGsI",
+    "refreshToken": "953f65ee8ced96229be79d70:e37020957e826f133595fc7b82f20f30:d4ec3fbbc23beea4eedfa83dffd389b1bf68ded76b87cfba015637a1045a7a4fed1b5e6f129f5e7cf8f7bc0c3ed1c0955c20ab4ad606ac9fb96c69d5e078c477a1d857b06641d2023616c3a67e2e050ac36301508b2031d94f9e515f1ba0a6e5392d35fa0bf6a6c54310b6f417aa139edb358e1316683680db2da9cdd374fe1bddfef97832",
+    "sessionId": "c61cbfd5-ad8a-46c6-bc04-efefd4e178c9",
+    "user": {
+      "id": "04b2c0c3-acfc-4cfc-a41e-af01fbc39c77",
+      "name": "Premium User",
+      "email": "premium@alumnus.app",
+      "role": "premium",
+      "theme": "light"
+    },
+    "markets": [
+      {
+        "id": "india",
+        "name": "Indian Market",
+        "exchange": "NSE/BSE"
+      },
+      {
+        "id": "us",
+        "name": "US Market",
+        "exchange": "NYSE/NASDAQ"
+      }
+    ],
+    "entitledIndicators": [
+      {
+        "id": "bbands_20",
+        "name": "Bollinger Bands",
+        "description": "Shows price volatility and potential reversal points using standard deviation bands",
+        "category": "Volatility",
+        "scale": "price"
+      },
+      {
+        "id": "rsi_14",
+        "name": "RSI (14)",
+        "description": "Relative Strength Index - measures speed and magnitude of price changes (0-100)",
+        "category": "Momentum",
+        "scale": "oscillator"
+      },
+      {
+        "id": "sma_20",
+        "name": "SMA (20)",
+        "description": "Simple Moving Average - 20-day average price trend indicator",
+        "category": "Trend",
+        "scale": "price"
+      },
+      {
+        "id": "sma_50",
+        "name": "SMA (50)",
+        "description": "Simple Moving Average - 50-day medium-term trend indicator",
+        "category": "Trend",
+        "scale": "price"
+      },
+      {
+        "id": "sma_200",
+        "name": "SMA (200)",
+        "description": "Simple Moving Average - 200-day long-term trend indicator",
+        "category": "Trend",
+        "scale": "price"
+      },
+      {
+        "id": "ema_20",
+        "name": "EMA (20)",
+        "description": "Exponential Moving Average - 20-day weighted trend with more emphasis on recent prices",
+        "category": "Trend",
+        "scale": "price"
+      },
+      {
+        "id": "ema_50",
+        "name": "EMA (50)",
+        "description": "Exponential Moving Average - 50-day weighted medium-term trend",
+        "category": "Trend",
+        "scale": "price"
+      },
+      {
+        "id": "wma_20",
+        "name": "WMA (20)",
+        "description": "Weighted Moving Average - linear weighting emphasizing recent prices",
+        "category": "Trend",
+        "scale": "price"
+      },
+      {
+        "id": "tema_30",
+        "name": "TEMA (30)",
+        "description": "Triple Exponential Moving Average - reduces lag for faster trend detection",
+        "category": "Trend",
+        "scale": "price"
+      },
+      {
+        "id": "kama_30",
+        "name": "KAMA (30)",
+        "description": "Kaufman Adaptive Moving Average - adapts to market volatility automatically",
+        "category": "Trend",
+        "scale": "price"
+      },
+      {
+        "id": "stoch_osc_14",
+        "name": "Stochastic Oscillator (Stochastic %K)",
+        "description": "Measures rate of price change to identify trend strength",
+        "category": "Momentum",
+        "scale": "oscillator"
+      },
+      {
+        "id": "cci_20",
+        "name": "CCI (20)",
+        "description": "Commodity Channel Index - identifies cyclical trends and overbought/oversold conditions",
+        "category": "Momentum",
+        "scale": "oscillator"
+      },
+      {
+        "id": "roc_10",
+        "name": "ROC (10)",
+        "description": "Rate of Change - percentage price change over 10 periods",
+        "category": "Momentum",
+        "scale": "oscillator"
+      },
+      {
+        "id": "mom_10",
+        "name": "Momentum (10)",
+        "description": "10-day momentum indicator showing price velocity",
+        "category": "Momentum",
+        "scale": "oscillator"
+      },
+      {
+        "id": "willr_14",
+        "name": "Williams %R (14)",
+        "description": "Measures overbought/oversold levels on a scale of 0 to -100",
+        "category": "Momentum",
+        "scale": "oscillator"
+      },
+      {
+        "id": "ultosc_28",
+        "name": "Ultimate Oscillator",
+        "description": "Multi-timeframe momentum oscillator combining three time periods",
+        "category": "Momentum",
+        "scale": "oscillator"
+      },
+      {
+        "id": "atr_14",
+        "name": "ATR (14)",
+        "description": "Average True Range - measures market volatility over 14 periods",
+        "category": "Volatility",
+        "scale": "volume"
+      },
+      {
+        "id": "natr",
+        "name": "NATR",
+        "description": "Normalized Average True Range - volatility as percentage of closing price",
+        "category": "Volatility",
+        "scale": "oscillator"
+      },
+      {
+        "id": "mfi_14",
+        "name": "MFI (14)",
+        "description": "Money Flow Index - volume-weighted RSI showing buying/selling pressure",
+        "category": "Volume",
+        "scale": "oscillator"
+      },
+      {
+        "id": "mcap_top_100",
+        "name": "Mcap Top 100",
+        "description": "Filter for top 100 stocks by market capitalization",
+        "category": "Strategy",
+        "scale": "none"
+      }
+    ]
+  }
+}

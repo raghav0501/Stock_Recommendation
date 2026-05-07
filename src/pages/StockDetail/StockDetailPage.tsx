@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { ArrowLeft, ChevronDown, ChevronUp } from 'lucide-react';
 import {
   CandlestickSeries,
@@ -53,7 +53,12 @@ interface StockDetailPageProps {
 export function StockDetailPage({ indicators }: StockDetailPageProps) {
   const { symbol } = useParams<{ symbol: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const { theme } = useTheme();
+
+  const fromWatchlist = (location.state as { from?: string } | null)?.from === 'watchlist';
+  const backLabel = fromWatchlist ? 'Back to Watchlist' : 'Back to Stocks';
+  const backPath = fromWatchlist ? '/watchlist' : '/stocks';
 
   // ── chart refs ──────────────────────────────────────────────────────
   const mainChartContainerRef = useRef<HTMLDivElement>(null);
@@ -203,15 +208,21 @@ export function StockDetailPage({ indicators }: StockDetailPageProps) {
     candlestickSeriesRef.current = candlestick; // ★ store ref
 
     if (stockDetail.chartData?.length) {
-      candlestick.setData(
-        stockDetail.chartData.map((d) => ({
-          time: d.time,
-          open: d.open,
-          high: d.high,
-          low: d.low,
-          close: d.close,
-        }))
+      // Filter out candles where any OHLC value is null — API can return nulls for illiquid stocks
+      const validCandles = stockDetail.chartData.filter(
+        (d) => d.open != null && d.high != null && d.low != null && d.close != null
       );
+      if (validCandles.length) {
+        candlestick.setData(
+          validCandles.map((d) => ({
+            time: d.time,
+            open: d.open,
+            high: d.high,
+            low: d.low,
+            close: d.close,
+          }))
+        );
+      }
     }
 
     const stockDataWithTechnicals = {
@@ -408,18 +419,17 @@ export function StockDetailPage({ indicators }: StockDetailPageProps) {
         <p className="text-light-text-secondary dark:text-dark-text-secondary">
           Stock not found
         </p>
-        <Button onClick={() => navigate('/stocks')}>Back to Stocks</Button>
+        <Button onClick={() => navigate(backPath)}>{backLabel}</Button>
       </div>
     );
   }
 
-  const latestPrice =
-    stockDetail.chartData[stockDetail.chartData.length - 1].close;
-  const previousPrice =
-    stockDetail.chartData[stockDetail.chartData.length - 2]?.close ||
-    latestPrice;
+  // Use only candles with a valid close to avoid null-arithmetic errors
+  const validPriceData = stockDetail.chartData.filter((d) => d.close != null);
+  const latestPrice = validPriceData[validPriceData.length - 1]?.close ?? 0;
+  const previousPrice = validPriceData[validPriceData.length - 2]?.close ?? latestPrice;
   const priceChange = latestPrice - previousPrice;
-  const priceChangePercent = (priceChange / previousPrice) * 100;
+  const priceChangePercent = previousPrice !== 0 ? (priceChange / previousPrice) * 100 : 0;
   const changeInfo = formatChange(priceChange, priceChangePercent);
 
   const selectedChartableNames = indicators
@@ -432,9 +442,9 @@ export function StockDetailPage({ indicators }: StockDetailPageProps) {
   // ══════════════════════════════════════════════════════════════════════
   return (
     <div className="space-y-6 animate-fade-in">
-      <Button variant="ghost" onClick={() => navigate('/stocks')} size="sm">
+      <Button variant="ghost" onClick={() => navigate(backPath)} size="sm">
         <ArrowLeft className="w-4 h-4 mr-2" />
-        Back to Stocks
+        {backLabel}
       </Button>
 
       {/* Header */}

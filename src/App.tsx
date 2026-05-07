@@ -5,9 +5,12 @@ import { AuthProvider, useAuth } from './config/AuthContext';
 import { Header } from './components/Header';
 import { ChatBot } from './components/ChatBot/ChatBot';
 import { LoginPage } from './pages/Login/LoginPage';
+import { OtpLoginPage } from './pages/Login/OtpLoginPage';
 import { ExchangePage } from './pages/Exchange/ExchangePage';
 import { StocksPage } from './pages/Stocks/StocksPage';
 import { PortfolioPage } from './pages/Portfolio/PortfolioPage';
+import { WatchlistPage } from './pages/Watchlist/WatchlistPage';
+import { BacktestPage } from './pages/Backtest/BacktestPage';
 import { StockDetailPage } from './pages/StockDetail/StockDetailPage';
 import { TechnicalIndicatorsPage } from './pages/Parameters/TechnicalIndicatorsPage';
 // import { getSignals } from './api/backendService';
@@ -55,6 +58,8 @@ function AppContent() {
       <Routes>
         {/* Public Routes */}
         <Route path="/login" element={<LoginPage />} />
+        {/* TODO: /login/otp is the primary login route once backend OTP API is ready */}
+        <Route path="/login/otp" element={<OtpLoginPage />} />
         
         {/* Protected Routes */}
         <Route path="/exchange" element={
@@ -101,6 +106,16 @@ function AppContent() {
                   <Route
                     path="/portfolio"
                     element={<PortfolioPage />}
+                  />
+
+                  <Route
+                    path="/watchlist"
+                    element={<WatchlistPage />}
+                  />
+
+                  <Route
+                    path="/backtest"
+                    element={<BacktestPage />}
                   />
 
                   <Route path="*" element={<Navigate to="/exchange" replace />} />

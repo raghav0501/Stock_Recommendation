@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Mail, Lock, ArrowRight, AlertCircle } from 'lucide-react';
+import { Mail, Lock, ArrowRight, AlertCircle, ShieldCheck } from 'lucide-react';
 import { Button } from '../../components/Button';
 import { useAuth } from '../../config/AuthContext';
 
@@ -126,15 +126,20 @@ export function LoginPage() {
             </Button>
           </form>
 
-          {/* Demo Credentials */}
-          {/* <div className="mt-6 p-4 bg-light-accent-primary/10 dark:bg-dark-accent-primary/10 border border-light-accent-primary/30 dark:border-dark-accent-primary/30 rounded-xl">
-            <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary mb-2 font-semibold">
-              Demo Access:
+          {/* Toggle to OTP login */}
+          <div className="mt-6 pt-6 border-t border-light-border-primary dark:border-dark-border-primary text-center">
+            <p className="text-sm text-light-text-tertiary dark:text-dark-text-tertiary mb-3">
+              Prefer a passwordless experience?
             </p>
-            <p className="text-xs text-light-text-tertiary dark:text-dark-text-tertiary">
-              Use any email and password to sign in. This is a demo environment.
-            </p>
-          </div> */}
+            <button
+              type="button"
+              onClick={() => navigate('/login/otp')}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-light-accent-primary dark:text-dark-accent-primary border border-light-accent-primary/40 dark:border-dark-accent-primary/40 hover:bg-light-accent-primary/10 dark:hover:bg-dark-accent-primary/10 transition-all"
+            >
+              <ShieldCheck className="w-4 h-4" />
+              Sign in with OTP
+            </button>
+          </div>
         </div>
 
         {/* Footer */}
