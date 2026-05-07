@@ -254,7 +254,7 @@ export function OtpLoginPage() {
         </div>
 
         {/* Toggle to password login */}
-        <div className="mt-4 text-center">
+        {/* <div className="mt-4 text-center">
           <button
             type="button"
             onClick={() => navigate('/login')}
@@ -264,7 +264,7 @@ export function OtpLoginPage() {
             <Lock className="w-4 h-4" />
             Sign in with Password
           </button>
-        </div>
+        </div> */}
 
         <p className="text-center text-sm text-light-text-tertiary dark:text-dark-text-tertiary mt-4">
           By signing in, you agree to our Terms of Service and Privacy Policy

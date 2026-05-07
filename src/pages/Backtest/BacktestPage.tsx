@@ -1,15 +1,22 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import {
   Search, ChevronRight, ChevronLeft, Play,
   TrendingUp, TrendingDown, X, SlidersHorizontal,
   Check, RotateCcw,
 } from 'lucide-react';
+import {
+  CandlestickSeries, LineSeries, createChart, createSeriesMarkers,
+  type IChartApi, type SeriesMarker,
+} from 'lightweight-charts';
 import { Card } from '../../components/Card';
 import { Button } from '../../components/Button';
 import { Loader } from '../../components/Loader';
-import { TECHNICAL_PARAMETERS } from '../../config/parameters';
+import { useAuth } from '../../config/AuthContext';
+import { useTheme } from '../../config/ThemeContext';
+import { getBaseChartOptions, getCandlestickOptions } from '../../config/chartConfig';
+import { createOscillatorPane, syncTimeScales } from '../../utils/chartUtils';
 import stockUniverse from '../../data/Stock_universe.json';
-import { runBacktest, type BacktestResult } from '../../api/backtestApi';
+import { runBacktest, type BacktestResult, type PlotSignalPoint } from '../../api/backtestApi';
 
 // ── Types ──────────────────────────────────────────────────────────
 interface StockEntry {
@@ -36,7 +43,188 @@ function isoDate(d: Date): string {
   return d.toISOString().split('T')[0];
 }
 
-// ── Dual range slider (pointer-event-based, no stacked inputs) ─────
+// ── Chart helpers ──────────────────────────────────────────────────
+
+function addSingleLine(
+  chart: IChartApi,
+  data: PlotSignalPoint[],
+  key: string,
+  color: string,
+  title: string
+) {
+  try {
+    const series = chart.addSeries(LineSeries, {
+      color,
+      lineWidth: 2,
+      title,
+      priceLineVisible: false,
+      lastValueVisible: true,
+    });
+    const lineData = data
+      .filter((d) => d[key] != null)
+      .map((d) => ({ time: d.date, value: d[key] as number }));
+    if (lineData.length) {
+      series.setData(lineData);
+    } else {
+      chart.removeSeries(series);
+    }
+  } catch (e) {
+    console.error(e);
+  }
+}
+
+function addBBandsToChart(chart: IChartApi, data: PlotSignalPoint[]) {
+  try {
+    const color = '#f59e0b';
+    const upper = chart.addSeries(LineSeries, { color, lineWidth: 1, title: 'BB Upper', priceLineVisible: false, lastValueVisible: true });
+    const middle = chart.addSeries(LineSeries, { color, lineWidth: 2, title: 'BB Middle', priceLineVisible: false, lastValueVisible: true });
+    const lower = chart.addSeries(LineSeries, { color, lineWidth: 1, title: 'BB Lower', priceLineVisible: false, lastValueVisible: true });
+    const ud = data.filter((d) => d.bb_upper != null).map((d) => ({ time: d.date, value: d.bb_upper as number }));
+    const md = data.filter((d) => (d.bb_middle ?? d.bb_mid) != null).map((d) => ({ time: d.date, value: (d.bb_middle ?? d.bb_mid) as number }));
+    const ld = data.filter((d) => d.bb_lower != null).map((d) => ({ time: d.date, value: d.bb_lower as number }));
+    if (ud.length) {
+      upper.setData(ud);
+      middle.setData(md);
+      lower.setData(ld);
+    } else {
+      chart.removeSeries(upper);
+      chart.removeSeries(middle);
+      chart.removeSeries(lower);
+    }
+  } catch (e) {
+    console.error(e);
+  }
+}
+
+// ── BacktestChart ──────────────────────────────────────────────────
+
+function BacktestChart({
+  data,
+  indicatorId,
+  indicatorScale,
+}: {
+  data: PlotSignalPoint[];
+  indicatorId: string;
+  indicatorScale: string;
+}) {
+  const { theme } = useTheme();
+  const mainRef = useRef<HTMLDivElement>(null);
+  const oscRef = useRef<HTMLDivElement>(null);
+  const mainChartRef = useRef<IChartApi | null>(null);
+  const oscChartRef = useRef<IChartApi | null>(null);
+
+  const isOscillator = indicatorScale === 'oscillator';
+  const isBbands = indicatorId === 'bbands_20';
+
+  useEffect(() => {
+    if (!mainRef.current) return;
+
+    // Cleanup previous charts
+    [mainChartRef, oscChartRef].forEach((ref) => {
+      if (ref.current) {
+        try { ref.current.remove(); } catch { /* already disposed */ }
+        ref.current = null;
+      }
+    });
+
+    // Sort ascending by date (API returns newest first)
+    const sorted = [...data].sort((a, b) => a.date.localeCompare(b.date));
+
+    const width = mainRef.current.clientWidth;
+
+    // Main chart
+    const baseOpts = getBaseChartOptions(theme, width, 360);
+    const mainChart = createChart(mainRef.current, {
+      ...baseOpts,
+      crosshair: {
+        mode: 0,
+        vertLine: { labelVisible: !isOscillator },
+      },
+      timeScale: {
+        ...(baseOpts as Record<string, unknown>).timeScale as object,
+        visible: !isOscillator,
+      },
+    });
+    mainChartRef.current = mainChart;
+
+    // Candlestick series
+    const candlestick = mainChart.addSeries(CandlestickSeries, getCandlestickOptions());
+    const candleData = sorted
+      .filter((d) => d.open != null && d.close != null)
+      .map((d) => ({
+        time: d.date,
+        open: d.open as number,
+        high: d.high as number,
+        low: d.low as number,
+        close: d.close as number,
+      }));
+    if (candleData.length) candlestick.setData(candleData);
+
+    // Signal markers
+    const markers: SeriesMarker<string>[] = sorted
+      .filter((d) => d.signal === 1 || d.signal === -1)
+      .map((d) => ({
+        time: d.date,
+        position: d.signal === 1 ? 'belowBar' : 'aboveBar',
+        color: d.signal === 1 ? '#22c55e' : '#ef4444',
+        shape: d.signal === 1 ? 'arrowUp' : 'arrowDown',
+        text: d.signal === 1 ? 'B' : 'S',
+        size: 1,
+      }));
+    if (markers.length) createSeriesMarkers(candlestick, markers);
+
+    // Indicator overlay on main chart (price-scale)
+    if (!isOscillator) {
+      if (isBbands) {
+        addBBandsToChart(mainChart, sorted);
+      } else {
+        addSingleLine(mainChart, sorted, indicatorId, '#8b5cf6', indicatorId.toUpperCase());
+      }
+    }
+
+    // Oscillator pane
+    if (isOscillator && oscRef.current) {
+      const oscChart = createOscillatorPane(oscRef.current, theme, width, 180);
+      oscChartRef.current = oscChart;
+      addSingleLine(oscChart, sorted, indicatorId, '#8b5cf6', indicatorId.toUpperCase());
+      syncTimeScales(mainChart, oscChart);
+      oscChart.timeScale().fitContent();
+    }
+
+    mainChart.timeScale().fitContent();
+
+    const handleResize = () => {
+      const w = mainRef.current?.clientWidth;
+      if (!w) return;
+      try { mainChartRef.current?.applyOptions({ width: w }); } catch { /* */ }
+      try { oscChartRef.current?.applyOptions({ width: w }); } catch { /* */ }
+    };
+    window.addEventListener('resize', handleResize);
+
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      [mainChartRef, oscChartRef].forEach((ref) => {
+        if (ref.current) {
+          try { ref.current.remove(); } catch { /* */ }
+          ref.current = null;
+        }
+      });
+    };
+  }, [data, indicatorId, indicatorScale, theme]);
+
+  return (
+    <div>
+      <div ref={mainRef} className="w-full" />
+      <div
+        ref={oscRef}
+        className={`w-full ${isOscillator ? '' : 'hidden'}`}
+        style={{ marginTop: -1 }}
+      />
+    </div>
+  );
+}
+
+// ── Dual range slider ──────────────────────────────────────────────
 function DualRangeSlider({
   from,
   to,
@@ -154,6 +342,9 @@ function StepProgress({ current }: { current: 1 | 2 | 3 }) {
 
 // ── Main page ──────────────────────────────────────────────────────
 export function BacktestPage() {
+  const { session } = useAuth();
+  const entitledIndicators = session?.entitledIndicators ?? [];
+
   const [step, setStep] = useState<WizardStep>(1);
   const [selectedStock, setSelectedStock] = useState<StockEntry | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -196,7 +387,7 @@ export function BacktestPage() {
           .slice(0, 8)
       : [];
 
-  const indicator = TECHNICAL_PARAMETERS.find((p) => p.id === selectedIndicator);
+  const indicator = entitledIndicators.find((p) => p.id === selectedIndicator);
   const fromDate = dateFromDay(fromDay);
   const toDate = dateFromDay(toDay);
 
@@ -206,17 +397,17 @@ export function BacktestPage() {
     setShowFilterModal(true);
   };
 
-  // TODO: Replace runBacktest call with real API once backend is ready
   const handleRun = async (fDay = fromDay, tDay = toDay) => {
     if (!selectedStock || !selectedIndicator) return;
     setIsLoading(true);
     setError('');
     try {
       const res = await runBacktest({
+        exchange: selectedExchange,
         symbol: selectedStock.symbol,
         indicator: selectedIndicator,
-        from: isoDate(dateFromDay(fDay)),
-        to: isoDate(dateFromDay(tDay)),
+        date_from: isoDate(dateFromDay(fDay)),
+        date_to: isoDate(dateFromDay(tDay)),
       });
       setResult(res);
       setStep(4);
@@ -429,7 +620,7 @@ export function BacktestPage() {
                 {/* ── Indicator selection view ── */}
                 {modalView === 'indicator' && (
                   <div className="max-h-72 overflow-y-auto -mx-1 space-y-0.5">
-                    {TECHNICAL_PARAMETERS.map((param) => (
+                    {entitledIndicators.map((param) => (
                       <button
                         key={param.id}
                         onClick={() => {
@@ -498,7 +689,7 @@ export function BacktestPage() {
               </span>
             </div>
             <div className="text-5xl font-bold text-green-600 dark:text-green-400">
-              {result.buy_signals}
+              {result.bull_count}
             </div>
           </Card>
 
@@ -512,10 +703,27 @@ export function BacktestPage() {
               </span>
             </div>
             <div className="text-5xl font-bold text-rose-600 dark:text-rose-400">
-              {result.sell_signals}
+              {result.bear_count}
             </div>
           </Card>
         </div>
+
+        {/* Chart */}
+        {result.plot_chart_signal.length > 0 && (
+          <Card>
+            <h3 className="text-lg font-semibold text-light-text-primary dark:text-dark-text-primary mb-1">
+              Price Chart with {indicator?.name ?? result.indicator}
+            </h3>
+            <p className="text-xs text-light-text-tertiary dark:text-dark-text-tertiary mb-4">
+              ▲ Buy signals marked below bars &nbsp;·&nbsp; ▼ Sell signals marked above bars
+            </p>
+            <BacktestChart
+              data={result.plot_chart_signal}
+              indicatorId={result.indicator}
+              indicatorScale={indicator?.scale ?? 'price'}
+            />
+          </Card>
+        )}
       </div>
     );
   }
@@ -609,28 +817,37 @@ export function BacktestPage() {
               Select a Technical Indicator
             </h3>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-              {TECHNICAL_PARAMETERS.map((param) => (
-                <button
-                  key={param.id}
-                  onClick={() => setSelectedIndicator(param.id)}
-                  className={`text-left p-4 rounded-xl border-2 transition-all ${
-                    selectedIndicator === param.id
-                      ? 'border-light-accent-primary dark:border-dark-accent-primary bg-light-accent-primary/10 dark:bg-dark-accent-primary/10'
-                      : 'border-light-border-primary dark:border-dark-border-primary hover:border-light-accent-primary/40 dark:hover:border-dark-accent-primary/40 bg-light-bg-tertiary dark:bg-dark-bg-tertiary'
-                  }`}
-                >
-                  <div className="flex items-center justify-between">
-                    <p className="font-semibold text-sm text-light-text-primary dark:text-dark-text-primary">
-                      {param.name}
+            {entitledIndicators.length === 0 ? (
+              <p className="text-sm text-light-text-tertiary dark:text-dark-text-tertiary text-center py-8">
+                No indicators available. Please log in via OTP to load your entitled indicators.
+              </p>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                {entitledIndicators.map((param) => (
+                  <button
+                    key={param.id}
+                    onClick={() => setSelectedIndicator(param.id)}
+                    className={`text-left p-4 rounded-xl border-2 transition-all ${
+                      selectedIndicator === param.id
+                        ? 'border-light-accent-primary dark:border-dark-accent-primary bg-light-accent-primary/10 dark:bg-dark-accent-primary/10'
+                        : 'border-light-border-primary dark:border-dark-border-primary hover:border-light-accent-primary/40 dark:hover:border-dark-accent-primary/40 bg-light-bg-tertiary dark:bg-dark-bg-tertiary'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <p className="font-semibold text-sm text-light-text-primary dark:text-dark-text-primary">
+                        {param.name}
+                      </p>
+                      {selectedIndicator === param.id && (
+                        <Check className="w-4 h-4 text-light-accent-primary dark:text-dark-accent-primary shrink-0" />
+                      )}
+                    </div>
+                    <p className="text-xs text-light-text-tertiary dark:text-dark-text-tertiary mt-1 capitalize">
+                      {param.category}
                     </p>
-                    {selectedIndicator === param.id && (
-                      <Check className="w-4 h-4 text-light-accent-primary dark:text-dark-accent-primary shrink-0" />
-                    )}
-                  </div>
-                </button>
-              ))}
-            </div>
+                  </button>
+                ))}
+              </div>
+            )}
 
             <div className="flex justify-between pt-2">
               <Button variant="ghost" onClick={() => setStep(1)}>

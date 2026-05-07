@@ -1,58 +1,60 @@
-// TODO: Replace API_BASE_URL usage with real endpoint when backend is ready
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://demo2-664110982097.us-central1.run.app';
+const BACKTEST_API_BASE = 'http://localhost:3000';
 
 export interface BacktestRequest {
+  exchange: string;
   symbol: string;
   indicator: string;
-  from: string; // ISO date "YYYY-MM-DD"
-  to: string;
+  date_from: string;
+  date_to: string;
 }
 
-export interface SignalEntry {
+export interface PlotSignalPoint {
   date: string;
-  signal: 'BUY' | 'SELL';
-  price: number;
+  signal: number; // 1=buy, -1=sell, 0=none
+  open: number | null;
+  high: number | null;
+  low: number | null;
+  close: number | null;
+  volume: number;
+  [key: string]: unknown; // indicator value(s) keyed by indicator id (e.g. rsi_14, bb_upper, etc.)
 }
 
 export interface BacktestResult {
-  buy_signals: number;
-  sell_signals: number;
-  signal_dates: SignalEntry[];
+  exchange: string;
+  symbol: string;
+  date_from: string;
+  date_to: string;
+  indicator: string;
+  bull_count: number;
+  bear_count: number;
+  plot_chart_signal: PlotSignalPoint[];
 }
 
-// TODO: Replace entire function body with real POST /api/backtest call when backend is ready
-// Real call will look like:
-// const response = await fetch(`${API_BASE_URL}/api/backtest`, {
-//   method: 'POST',
-//   headers: { 'Content-Type': 'application/json' },
-//   body: JSON.stringify(params),
-// });
-// if (!response.ok) throw new Error(`Backtest API error: ${response.status}`);
-// return response.json();
+function getAccessToken(): string | null {
+  try {
+    const raw = localStorage.getItem('alumnus_session');
+    if (!raw) return null;
+    return (JSON.parse(raw) as { accessToken?: string }).accessToken ?? null;
+  } catch {
+    return null;
+  }
+}
+
 export async function runBacktest(params: BacktestRequest): Promise<BacktestResult> {
-  void API_BASE_URL; // TODO: Remove this line when real API call is wired up
+  const token = getAccessToken();
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (token) headers['Authorization'] = `Bearer ${token}`;
 
-  // TODO: Remove mock data below when backend endpoint is available
-  await new Promise((resolve) => setTimeout(resolve, 1500));
+  const res = await fetch(`${BACKTEST_API_BASE}/api/backtest/signalcount`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(params),
+  });
 
-  const start = new Date(params.from);
-  const end = new Date(params.to);
-  const dayMs = 24 * 60 * 60 * 1000;
-  const totalDays = Math.max(1, Math.floor((end.getTime() - start.getTime()) / dayMs));
-  const signalCount = Math.max(3, Math.floor(totalDays / 12));
+  if (!res.ok) throw new Error(`Backtest API error: ${res.status}`);
 
-  const signals: SignalEntry[] = Array.from({ length: signalCount }, () => {
-    const randomDay = Math.floor(Math.random() * totalDays);
-    return {
-      date: new Date(start.getTime() + randomDay * dayMs).toISOString().split('T')[0],
-      signal: (Math.random() > 0.48 ? 'BUY' : 'SELL') as 'BUY' | 'SELL',
-      price: Math.round((100 + Math.random() * 2900) * 100) / 100,
-    };
-  }).sort((a, b) => a.date.localeCompare(b.date));
+  const json = await res.json();
+  if (json.status !== 'success') throw new Error('Backtest API returned failure status');
 
-  return {
-    buy_signals: signals.filter((s) => s.signal === 'BUY').length,
-    sell_signals: signals.filter((s) => s.signal === 'SELL').length,
-    signal_dates: signals,
-  };
+  return json.data as BacktestResult;
 }
