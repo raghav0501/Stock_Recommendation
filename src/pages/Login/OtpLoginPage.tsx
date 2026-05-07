@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Mail, ArrowRight, AlertCircle, Info, ShieldCheck, Lock } from 'lucide-react';
 import { Button } from '../../components/Button';
@@ -6,27 +6,46 @@ import { useAuth } from '../../config/AuthContext';
 
 type Step = 'email' | 'otp';
 
+const OTP_LENGTH = 6;
+const RESEND_COOLDOWN = 10;
+
 export function OtpLoginPage() {
   const navigate = useNavigate();
-  const { loginWithOtp } = useAuth();
+  const { requestOtp, loginWithOtp } = useAuth();
 
   const [step, setStep] = useState<Step>('email');
-  // TODO: Remove hardcoded default email when real user input is expected
-  const [email, setEmail] = useState('admin@alumnux.com');
-  const [otp, setOtp] = useState(['', '', '', '']);
+  const [email, setEmail] = useState('');
+  const [otp, setOtp] = useState<string[]>(Array(OTP_LENGTH).fill(''));
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [resendCountdown, setResendCountdown] = useState(RESEND_COOLDOWN);
 
-  // Refs for the 4 OTP input boxes
-  const otpRefs = useRef<(HTMLInputElement | null)[]>([null, null, null, null]);
+  const otpRefs = useRef<(HTMLInputElement | null)[]>(Array(OTP_LENGTH).fill(null));
 
-  const handleEmailSubmit = (e: React.FormEvent) => {
+  useEffect(() => {
+    if (resendCountdown <= 0) return;
+    const timer = setTimeout(() => setResendCountdown(c => c - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [resendCountdown]);
+
+  const sendOtp = async () => {
+    await requestOtp(email);
+    setResendCountdown(RESEND_COOLDOWN);
+  };
+
+  const handleEmailSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    // TODO: Call POST /api/auth/send-otp with { email } when backend is ready
-    // Always advance to OTP step — don't reveal whether the email is registered
-    setStep('otp');
-    setTimeout(() => otpRefs.current[0]?.focus(), 50);
+    setIsLoading(true);
+    try {
+      await sendOtp();
+      setStep('otp');
+      setTimeout(() => otpRefs.current[0]?.focus(), 50);
+    } catch {
+      setError('Failed to send OTP. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleOtpChange = (index: number, value: string) => {
@@ -34,7 +53,7 @@ export function OtpLoginPage() {
     const updated = [...otp];
     updated[index] = value;
     setOtp(updated);
-    if (value && index < 3) otpRefs.current[index + 1]?.focus();
+    if (value && index < OTP_LENGTH - 1) otpRefs.current[index + 1]?.focus();
   };
 
   const handleOtpKeyDown = (index: number, e: React.KeyboardEvent) => {
@@ -44,11 +63,11 @@ export function OtpLoginPage() {
   };
 
   const handleOtpPaste = (e: React.ClipboardEvent) => {
-    const pasted = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 4);
-    if (pasted.length === 4) {
+    const pasted = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, OTP_LENGTH);
+    if (pasted.length === OTP_LENGTH) {
       setOtp(pasted.split(''));
       e.preventDefault();
-      otpRefs.current[3]?.focus();
+      otpRefs.current[OTP_LENGTH - 1]?.focus();
     }
   };
 
@@ -56,19 +75,18 @@ export function OtpLoginPage() {
     e.preventDefault();
     setError('');
     const otpValue = otp.join('');
-    if (otpValue.length < 4) {
-      setError('Please enter the complete 4-digit OTP.');
+    if (otpValue.length < OTP_LENGTH) {
+      setError(`Please enter the complete ${OTP_LENGTH}-digit OTP.`);
       return;
     }
     setIsLoading(true);
     try {
-      // TODO: loginWithOtp will be backed by POST /api/auth/verify-otp when backend is ready
       const success = await loginWithOtp(email, otpValue);
       if (success) {
         navigate('/exchange');
       } else {
         setError('Invalid OTP. Please try again.');
-        setOtp(['', '', '', '']);
+        setOtp(Array(OTP_LENGTH).fill(''));
         setTimeout(() => otpRefs.current[0]?.focus(), 50);
       }
     } catch {
@@ -78,16 +96,20 @@ export function OtpLoginPage() {
     }
   };
 
-  const handleResendOtp = () => {
-    // TODO: Call POST /api/auth/send-otp to resend a fresh OTP when backend is ready
-    setOtp(['', '', '', '']);
+  const handleResendOtp = async () => {
+    setOtp(Array(OTP_LENGTH).fill(''));
     setError('');
+    try {
+      await sendOtp();
+    } catch {
+      setError('Failed to resend OTP. Please try again.');
+    }
     setTimeout(() => otpRefs.current[0]?.focus(), 50);
   };
 
   const handleChangeEmail = () => {
     setStep('email');
-    setOtp(['', '', '', '']);
+    setOtp(Array(OTP_LENGTH).fill(''));
     setError('');
   };
 
@@ -135,9 +157,17 @@ export function OtpLoginPage() {
                 </div>
               </div>
 
-              <Button type="submit" className="w-full" size="lg">
-                Send OTP
-                <ArrowRight className="w-5 h-5 ml-2" />
+              {error && (
+                <div className="flex items-center gap-2 p-3 bg-rose-500/10 border border-rose-500/30 rounded-lg text-rose-600 dark:text-rose-400 text-sm">
+                  <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                  <span>{error}</span>
+                </div>
+              )}
+
+              <Button type="submit" className="w-full" size="lg" disabled={isLoading}>
+                {isLoading ? 'Sending OTP...' : (
+                  <>Send OTP <ArrowRight className="w-5 h-5 ml-2" /></>
+                )}
               </Button>
             </form>
           )}
@@ -164,7 +194,7 @@ export function OtpLoginPage() {
                 <label className="block text-sm font-medium text-light-text-primary dark:text-dark-text-primary mb-3 text-center">
                   Enter OTP
                 </label>
-                <div className="flex gap-3 justify-center">
+                <div className="flex gap-2 justify-center">
                   {otp.map((digit, i) => (
                     <input
                       key={i}
@@ -176,7 +206,7 @@ export function OtpLoginPage() {
                       onChange={(e) => handleOtpChange(i, e.target.value)}
                       onKeyDown={(e) => handleOtpKeyDown(i, e)}
                       onPaste={handleOtpPaste}
-                      className="w-14 h-14 text-center text-xl font-bold bg-light-bg-tertiary dark:bg-dark-bg-tertiary border border-light-border-primary dark:border-dark-border-primary rounded-xl text-light-text-primary dark:text-dark-text-primary focus:outline-none focus:border-light-accent-primary dark:focus:border-dark-accent-primary focus:ring-2 focus:ring-light-accent-primary/20 dark:focus:ring-dark-accent-primary/20 transition-all"
+                      className="w-11 h-12 text-center text-xl font-bold bg-light-bg-tertiary dark:bg-dark-bg-tertiary border border-light-border-primary dark:border-dark-border-primary rounded-xl text-light-text-primary dark:text-dark-text-primary focus:outline-none focus:border-light-accent-primary dark:focus:border-dark-accent-primary focus:ring-2 focus:ring-light-accent-primary/20 dark:focus:ring-dark-accent-primary/20 transition-all"
                     />
                   ))}
                 </div>
@@ -206,9 +236,10 @@ export function OtpLoginPage() {
                 <button
                   type="button"
                   onClick={handleResendOtp}
-                  className="text-light-accent-primary dark:text-dark-accent-primary hover:underline"
+                  disabled={resendCountdown > 0}
+                  className="text-light-accent-primary dark:text-dark-accent-primary hover:underline disabled:opacity-50 disabled:no-underline disabled:cursor-not-allowed"
                 >
-                  Resend OTP
+                  {resendCountdown > 0 ? `Resend in ${resendCountdown}s` : 'Resend OTP'}
                 </button>
                 <button
                   type="button"
@@ -227,7 +258,8 @@ export function OtpLoginPage() {
           <button
             type="button"
             onClick={() => navigate('/login')}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-light-text-secondary dark:text-dark-text-secondary border border-light-border-primary dark:border-dark-border-primary hover:bg-light-bg-elevated dark:hover:bg-dark-bg-elevated transition-all"
+            disabled
+            className="inline-flex items-center cursor-not-allowed gap-2 px-4 py-2 rounded-lg text-sm font-medium text-light-text-secondary dark:text-dark-text-secondary border border-light-border-primary dark:border-dark-border-primary hover:bg-light-bg-elevated dark:hover:bg-dark-bg-elevated transition-all"
           >
             <Lock className="w-4 h-4" />
             Sign in with Password

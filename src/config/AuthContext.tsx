@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
-// TODO: Remove static import and replace with API call POST /api/auth/verify-otp when backend is ready
-import mockLoginResponse from '../data/response.json';
+
+const OTP_API_BASE = 'http://localhost:3000';
 
 interface User {
   email: string;
@@ -10,13 +10,16 @@ interface User {
   theme?: string;
 }
 
-interface Market {
+export interface Market {
   id: string;
+  exchange: string; // same value as id, used throughout the app
   name: string;
-  exchange: string;
+  fullName: string;
+  country: string;
+  description: string;
 }
 
-interface EntitledIndicator {
+export interface EntitledIndicator {
   id: string;
   name: string;
   description: string;
@@ -37,6 +40,7 @@ interface AuthContextType {
   session: AuthSession | null;
   isAuthenticated: boolean;
   login: (email: string, password: string) => Promise<boolean>;
+  requestOtp: (email: string) => Promise<void>;
   loginWithOtp: (email: string, otp: string) => Promise<boolean>;
   logout: () => void;
   isLoading: boolean;
@@ -63,7 +67,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const login = async (email: string, password: string): Promise<boolean> => {
-    // TODO: Replace with POST /api/auth/login when backend is ready
     await new Promise(resolve => setTimeout(resolve, 1000));
 
     if (!email.endsWith('@alumnux.com')) return false;
@@ -78,21 +81,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return false;
   };
 
+  const requestOtp = async (email: string): Promise<void> => {
+    await fetch(`${OTP_API_BASE}/api/auth/otp/request`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email }),
+    });
+    // Never reveal whether the email is registered — silently succeed either way
+  };
+
   const loginWithOtp = async (email: string, otp: string): Promise<boolean> => {
-    // TODO: Replace with POST /api/auth/verify-otp when backend is ready
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    const res = await fetch(`${OTP_API_BASE}/api/auth/otp/verify`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, otp }),
+    });
 
-    // TODO: Remove hardcoded credentials — validate against backend API response
-    const VALID_EMAIL = 'admin@alumnux.com';
-    const VALID_OTP = '1234';
+    if (!res.ok) return false;
 
-    if (email !== VALID_EMAIL || otp !== VALID_OTP) return false;
-
-    // TODO: Use real API response instead of mock — mockLoginResponse will be removed
-    const response = mockLoginResponse;
+    const response = await res.json();
     if (response.status !== 'success') return false;
 
-    const { user: userData, accessToken, refreshToken, sessionId, markets, entitledIndicators } = response.data;
+    const { user: userData, accessToken, refreshToken, sessionId, markets: rawMarkets, entitledIndicators } = response.data;
 
     const loggedInUser: User = {
       id: userData.id,
@@ -101,6 +111,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       role: userData.role,
       theme: userData.theme,
     };
+
+    const markets: Market[] = rawMarkets.map((m: { id: string; name: string; fullName: string; country: string; description: string }) => ({
+      id: m.id,
+      exchange: m.id,
+      name: m.name,
+      fullName: m.fullName,
+      country: m.country,
+      description: m.description,
+    }));
 
     const authSession: AuthSession = {
       accessToken,
@@ -113,7 +132,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(loggedInUser);
     setSession(authSession);
     localStorage.setItem('alumnus_user', JSON.stringify(loggedInUser));
-    // TODO: Store tokens in httpOnly cookies via backend instead of localStorage for security
     localStorage.setItem('alumnus_session', JSON.stringify(authSession));
 
     return true;
@@ -134,6 +152,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         session,
         isAuthenticated: !!user,
         login,
+        requestOtp,
         loginWithOtp,
         logout,
         isLoading,

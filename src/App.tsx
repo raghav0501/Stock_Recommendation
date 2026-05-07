@@ -13,9 +13,7 @@ import { WatchlistPage } from './pages/Watchlist/WatchlistPage';
 import { BacktestPage } from './pages/Backtest/BacktestPage';
 import { StockDetailPage } from './pages/StockDetail/StockDetailPage';
 import { TechnicalIndicatorsPage } from './pages/Parameters/TechnicalIndicatorsPage';
-// import { getSignals } from './api/backendService';
 import type { TechnicalParameter } from './models/Market';
-import { TECHNICAL_PARAMETERS } from './config/parameters';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading } = useAuth();
@@ -29,37 +27,44 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   }
 
   if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to="/login/otp" replace />;
   }
 
   return <>{children}</>;
 }
 
+const CATEGORY_MAP: Record<string, TechnicalParameter['category']> = {
+  trend: 'Trend',
+  momentum: 'Momentum',
+  volatility: 'Volatility',
+  volume: 'Volume',
+  strategy: 'Strategy',
+};
+
 function AppContent() {
+  const { session } = useAuth();
   const [parameters, setParameters] = useState<TechnicalParameter[]>([]);
   const [selectedParameters, setSelectedParameters] = useState<string[]>([]);
 
   useEffect(() => {
-    const getTechnicalParameters = async () => {
-      try {
-        // const res = await getSignals();
-        // if (res.signals.length > 0) {
-        setParameters(TECHNICAL_PARAMETERS);
-        // }
-      } catch (error) {
-        console.error('Error fetching technical parameters:', error);
-      }
-    }
-    getTechnicalParameters();
-  }, []);
+    if (!session?.entitledIndicators?.length) return;
+    const mapped: TechnicalParameter[] = session.entitledIndicators.map(ind => ({
+      id: ind.id,
+      name: ind.name,
+      description: ind.description,
+      category: CATEGORY_MAP[ind.category.toLowerCase()] ?? 'Strategy',
+      scale: ind.scale as TechnicalParameter['scale'],
+      chartable: true,
+    }));
+    setParameters(mapped);
+  }, [session]);
 
   return (
     <div className="min-h-screen bg-light-bg-secondary dark:bg-dark-bg-primary text-light-text-primary dark:text-dark-text-primary transition-colors duration-200">
       <Routes>
         {/* Public Routes */}
-        <Route path="/login" element={<LoginPage />} />
-        {/* TODO: /login/otp is the primary login route once backend OTP API is ready */}
         <Route path="/login/otp" element={<OtpLoginPage />} />
+        <Route path="/login" element={<LoginPage />} />
         
         {/* Protected Routes */}
         <Route path="/exchange" element={
@@ -128,7 +133,7 @@ function AppContent() {
         } />
 
         {/* Root redirect */}
-        <Route path="/" element={<Navigate to="/login" replace />} />
+        <Route path="/" element={<Navigate to="/login/otp" replace />} />
       </Routes>
     </div>
   );

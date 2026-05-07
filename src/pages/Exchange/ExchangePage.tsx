@@ -1,8 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Building2, Globe, Lock } from 'lucide-react';
+import { Building2, Globe } from 'lucide-react';
 import { Card } from '../../components/Card';
-// import { getExchanges } from '../../api/backendService';
+import { useAuth } from '../../config/AuthContext';
+import type { Market } from '../../config/AuthContext';
+import { Lock } from 'lucide-react';
 
 interface Exchange {
   id: string;
@@ -14,68 +16,28 @@ interface Exchange {
   enabled: boolean;
 }
 
-
-const EXCHANGES: Exchange[] = [
-  {
-    id: 'india',
-    name: 'NSE & BSE',
-    fullName: 'National Stock Exchange of India & Bombay Stock Exchange',
-    country: 'India',
-    description: 'Leading stock exchange in India by market capitalization and trading volume',
-    icon: <Building2 className="w-8 h-8" />,
+function marketToExchange(market: Market): Exchange {
+  return {
+    id: market.exchange,
+    name: market.name,
+    fullName: market.fullName,
+    country: market.country,
+    description: market.description,
+    icon: market.exchange === 'india' ? <Building2 className="w-8 h-8" /> : <Globe className="w-8 h-8" />,
     enabled: true,
-  },
-  {
-    id: 'us',
-    name: 'NASDAQ & NYSE',
-    fullName: 'National Association of Securities Dealers Automated Quotations & New York Stock Exchange',
-    country: 'United States',
-    description: 'Largest stock exchange in the world by market capitalization',
-    icon: <Globe className="w-8 h-8" />,
-    enabled: true,
-  },
-  {
-    id: 'lse',
-    name: 'LSE',
-    fullName: 'London Stock Exchange',
-    country: 'United Kingdom',
-    description: 'One of the oldest stock exchanges in the world',
-    icon: <Globe className="w-8 h-8" />,
-    enabled: false,
-  },
-  {
-    id: 'sse',
-    name: 'SSE',
-    fullName: 'Shanghai Stock Exchange',
-    country: 'China',
-    description: 'One of the two stock exchanges operating independently in China',
-    icon: <Globe className="w-8 h-8" />,
-    enabled: false,
-  },
-];
-
-// interface Exchange {
-//   value: string;
-//   label: string;
-// };
+  };
+}
 
 export function ExchangePage() {
   const navigate = useNavigate();
-  const [exchangeOptions, setExchangeOptions] = useState<Exchange[]>([]);
-  // const [selectedExchange, setSelectedExchange] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
+  const { session } = useAuth();
 
-  useEffect(() => {
-    const getExchange = async () => {
-      setLoading(true);
-      // const res = await getExchanges();
-      // if (res.exchanges.length > 0) {
-        setExchangeOptions(EXCHANGES);
-      // }
-      setLoading(false);
-    };
-    getExchange();
-  }, []);
+  const exchangeOptions = useMemo<Exchange[]>(
+    () => (session?.markets ?? []).map(marketToExchange),
+    [session]
+  );
+
+  const loading = false;
 
   const handleClick = (id: string) => {
     // if (selectedExchange) {
