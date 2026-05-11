@@ -202,6 +202,18 @@ export function syncTimeScales(
 
 // ─── SYNC: CROSSHAIR (hover mirror) ─────────────────────────────────
 
+// lightweight-charts v5 returns BusinessDay {year,month,day} objects for YYYY-MM-DD string data.
+// String(businessDay) → "[object Object]", so we must convert explicitly to match map keys.
+function toTimeKey(time: unknown): string {
+  if (typeof time === 'string') return time;
+  if (typeof time === 'number') return new Date(time * 1000).toISOString().split('T')[0];
+  if (time && typeof time === 'object') {
+    const { year, month, day } = time as { year: number; month: number; day: number };
+    return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+  }
+  return String(time);
+}
+
 export function syncCrosshairs(
   mainChart: IChartApi,
   oscChart: IChartApi,
@@ -218,13 +230,12 @@ export function syncCrosshairs(
     isSyncing = true;
 
     if (param.time) {
-      const val = oscValueMap.get(String(param.time));
+      const val = oscValueMap.get(toTimeKey(param.time));
       if (val !== undefined) {
         try {
           oscChart.setCrosshairPosition(val, param.time, oscSeries);
         } catch { /* disposed */ }
       } else {
-        // ★ Time exists but no matching osc value — clear instead of leaving stale
         try { oscChart.clearCrosshairPosition(); } catch { /* */ }
       }
     } else {
@@ -240,7 +251,7 @@ export function syncCrosshairs(
     isSyncing = true;
 
     if (param.time) {
-      const val = mainPriceMap.get(String(param.time));
+      const val = mainPriceMap.get(toTimeKey(param.time));
       if (val !== undefined) {
         try {
           mainChart.setCrosshairPosition(val, param.time, mainSeries);

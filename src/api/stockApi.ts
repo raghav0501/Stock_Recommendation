@@ -73,6 +73,15 @@ export async function getFilteredStocks(selectedParameters: string[] = []): Prom
     }
 
     const { buy, neutral, sell } = response.data;
+    // DEBUG LOGGING: No issues in the rendering part, we checked by overwriting the data.
+    // let { buy, neutral, sell } = response.data;
+    // console.log("Buy calls: ",buy);
+    // sell = [{
+    //   symbol: "TITAN",
+    //   latest_price: 123,
+    //   price_change_pct: 0.5
+    // }];
+    // console.log("Sell calls: ",sell);
 
     // Combine all stocks and map to our Stock interface
     const allStocks: Stock[] = [];

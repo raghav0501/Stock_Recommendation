@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import {
   CandlestickSeries, LineSeries, createChart, createSeriesMarkers,
-  type IChartApi, type SeriesMarker,
+  type IChartApi, type ISeriesApi, type SeriesMarker,
 } from 'lightweight-charts';
 import { Card } from '../../components/Card';
 import { Button } from '../../components/Button';
@@ -14,7 +14,7 @@ import { Loader } from '../../components/Loader';
 import { useAuth } from '../../config/AuthContext';
 import { useTheme } from '../../config/ThemeContext';
 import { getBaseChartOptions, getCandlestickOptions } from '../../config/chartConfig';
-import { createOscillatorPane, syncTimeScales } from '../../utils/chartUtils';
+import { createOscillatorPane, syncTimeScales, syncCrosshairs } from '../../utils/chartUtils';
 import stockUniverse from '../../data/Stock_universe.json';
 import { runBacktest, type BacktestResult, type PlotSignalPoint } from '../../api/backtestApi';
 
@@ -51,7 +51,7 @@ function addSingleLine(
   key: string,
   color: string,
   title: string
-) {
+): ISeriesApi<'Line'> | null {
   try {
     const series = chart.addSeries(LineSeries, {
       color,
@@ -65,11 +65,14 @@ function addSingleLine(
       .map((d) => ({ time: d.date, value: d[key] as number }));
     if (lineData.length) {
       series.setData(lineData);
+      return series;
     } else {
       chart.removeSeries(series);
+      return null;
     }
   } catch (e) {
     console.error(e);
+    return null;
   }
 }
 
@@ -186,8 +189,17 @@ function BacktestChart({
     if (isOscillator && oscRef.current) {
       const oscChart = createOscillatorPane(oscRef.current, theme, width, 180);
       oscChartRef.current = oscChart;
-      addSingleLine(oscChart, sorted, indicatorId, '#8b5cf6', indicatorId.toUpperCase());
+      const oscSeries = addSingleLine(oscChart, sorted, indicatorId, '#8b5cf6', indicatorId.toUpperCase());
       syncTimeScales(mainChart, oscChart);
+      if (oscSeries) {
+        const priceMap = new Map<string, number>(
+          sorted.filter((d) => d.close != null).map((d) => [d.date, d.close as number])
+        );
+        const valueMap = new Map<string, number>(
+          sorted.filter((d) => d[indicatorId] != null).map((d) => [d.date, d[indicatorId] as number])
+        );
+        syncCrosshairs(mainChart, oscChart, candlestick, oscSeries, priceMap, valueMap);
+      }
       oscChart.timeScale().fitContent();
     }
 
