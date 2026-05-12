@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Mail, ArrowRight, AlertCircle, Info, ShieldCheck, Lock } from 'lucide-react';
+import { Mail, ArrowRight, AlertCircle, Info, ShieldCheck } from 'lucide-react';
 import { Button } from '../../components/Button';
 import { useAuth } from '../../config/AuthContext';
 
