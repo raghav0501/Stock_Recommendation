@@ -5,14 +5,15 @@ import { AuthProvider, useAuth } from './config/AuthContext';
 import { Header } from './components/Header';
 import { ChatBot } from './components/ChatBot/ChatBot';
 import { LoginPage } from './pages/Login/LoginPage';
+import { OtpLoginPage } from './pages/Login/OtpLoginPage';
 import { ExchangePage } from './pages/Exchange/ExchangePage';
 import { StocksPage } from './pages/Stocks/StocksPage';
 import { PortfolioPage } from './pages/Portfolio/PortfolioPage';
+import { WatchlistPage } from './pages/Watchlist/WatchlistPage';
+import { BacktestPage } from './pages/Backtest/BacktestPage';
 import { StockDetailPage } from './pages/StockDetail/StockDetailPage';
 import { TechnicalIndicatorsPage } from './pages/Parameters/TechnicalIndicatorsPage';
-// import { getSignals } from './api/backendService';
 import type { TechnicalParameter } from './models/Market';
-import { TECHNICAL_PARAMETERS } from './config/parameters';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading } = useAuth();
@@ -26,34 +27,43 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   }
 
   if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to="/login/otp" replace />;
   }
 
   return <>{children}</>;
 }
 
+const CATEGORY_MAP: Record<string, TechnicalParameter['category']> = {
+  trend: 'Trend',
+  momentum: 'Momentum',
+  volatility: 'Volatility',
+  volume: 'Volume',
+  strategy: 'Strategy',
+};
+
 function AppContent() {
+  const { session } = useAuth();
   const [parameters, setParameters] = useState<TechnicalParameter[]>([]);
   const [selectedParameters, setSelectedParameters] = useState<string[]>([]);
 
   useEffect(() => {
-    const getTechnicalParameters = async () => {
-      try {
-        // const res = await getSignals();
-        // if (res.signals.length > 0) {
-        setParameters(TECHNICAL_PARAMETERS);
-        // }
-      } catch (error) {
-        console.error('Error fetching technical parameters:', error);
-      }
-    }
-    getTechnicalParameters();
-  }, []);
+    if (!session?.entitledIndicators?.length) return;
+    const mapped: TechnicalParameter[] = session.entitledIndicators.map(ind => ({
+      id: ind.id,
+      name: ind.name,
+      description: ind.description,
+      category: CATEGORY_MAP[ind.category.toLowerCase()] ?? 'Strategy',
+      scale: ind.scale as TechnicalParameter['scale'],
+      chartable: true,
+    }));
+    setParameters(mapped);
+  }, [session]);
 
   return (
     <div className="min-h-screen bg-light-bg-secondary dark:bg-dark-bg-primary text-light-text-primary dark:text-dark-text-primary transition-colors duration-200">
       <Routes>
         {/* Public Routes */}
+        <Route path="/login/otp" element={<OtpLoginPage />} />
         <Route path="/login" element={<LoginPage />} />
         
         {/* Protected Routes */}
@@ -103,6 +113,16 @@ function AppContent() {
                     element={<PortfolioPage />}
                   />
 
+                  <Route
+                    path="/watchlist"
+                    element={<WatchlistPage />}
+                  />
+
+                  <Route
+                    path="/backtest"
+                    element={<BacktestPage />}
+                  />
+
                   <Route path="*" element={<Navigate to="/exchange" replace />} />
                 </Routes>
               </main>
@@ -113,7 +133,7 @@ function AppContent() {
         } />
 
         {/* Root redirect */}
-        <Route path="/" element={<Navigate to="/login" replace />} />
+        <Route path="/" element={<Navigate to="/login/otp" replace />} />
       </Routes>
     </div>
   );
