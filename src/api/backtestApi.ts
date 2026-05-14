@@ -1,5 +1,5 @@
-const BACKTEST_API_BASE = import.meta.env.VITE_MIDDLEWARE_URL || 'http://localhost:3000';
-// const BACKTEST_API_BASE = 'http://localhost:3000';
+// const BACKTEST_API_BASE = import.meta.env.VITE_MIDDLEWARE_URL || 'http://localhost:3000';
+const BACKTEST_API_BASE = 'http://localhost:3000';
 
 export interface BacktestRequest {
   exchange: string;

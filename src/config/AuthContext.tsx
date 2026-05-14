@@ -1,7 +1,7 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
 
-const OTP_API_BASE = import.meta.env.VITE_MIDDLEWARE_URL;
-// const OTP_API_BASE = 'http://localhost:3000';
+// const OTP_API_BASE = import.meta.env.VITE_MIDDLEWARE_URL;
+const OTP_API_BASE = 'http://localhost:3000';
 
 interface User {
   email: string;

@@ -490,7 +490,7 @@ export function StockDetailPage({ indicators }: StockDetailPageProps) {
         <h3 className="text-lg font-semibold text-light-text-primary dark:text-dark-text-primary mb-2">
           {selectedChartableNames.length > 0
             ? `Summary based on ${selectedChartableNames.join(', ')} (AI Generated)`
-            : 'Summary (AI Generated'}
+            : 'Summary (AI Generated)'}
         </h3>
         <p className="text-sm text-light-text-secondary dark:text-dark-text-secondary">
           <Markdown>

@@ -8,19 +8,31 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://demo2-6641109
 /**
  * Generic API call handler with error handling
  */
+
+function getAccessToken(): string | null {
+  try {
+    const raw = localStorage.getItem('alumnus_session');
+    if (!raw) return null;
+    return (JSON.parse(raw) as { accessToken?: string }).accessToken ?? null;
+  } catch {
+    return null;
+  }
+}
+
 async function apiCall<T>(
   endpoint: string,
   options: RequestInit = {}
 ): Promise<T> {
   try {
+    const token = getAccessToken();
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+
     const url = `${API_BASE_URL}${endpoint}`;
     console.log('API Call:', url, options.method || 'GET');
     
     const response = await fetch(url, {
-      headers: {
-        'Content-Type': 'application/json',
-        ...options.headers,
-      },
+      headers,
       ...options,
     });
 
@@ -272,7 +284,7 @@ export async function getStockFundamentals(
   symbol: string,
   exchange: string
 ): Promise<FundamentalsResponse> {
-  return apiCall(`/api/stock_snapshot/${exchange}/${symbol}`, {
+  return apiCall(`/api/stock-details/stock_snapshot/${exchange}/${symbol}`, {
     method: 'POST'
   });
 }
@@ -280,7 +292,7 @@ export async function getStockFundamentals(
  * Get stock news
  */
 export async function getStockNews(symbol: string): Promise<StockNewsResponse> {
-  return apiCall(`/api/news/stock/combined/${symbol}`);
+  return apiCall(`/api/stock-details/news/stock/combined/${symbol}`);
 }
 
 /**

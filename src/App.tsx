@@ -4,7 +4,7 @@ import { ThemeProvider } from './config/ThemeContext';
 import { AuthProvider, useAuth } from './config/AuthContext';
 import { Header } from './components/Header';
 import { ChatBot } from './components/ChatBot/ChatBot';
-import { LoginPage } from './pages/Login/LoginPage';
+// import { LoginPage } from './pages/Login/LoginPage';
 import { OtpLoginPage } from './pages/Login/OtpLoginPage';
 import { ExchangePage } from './pages/Exchange/ExchangePage';
 import { StocksPage } from './pages/Stocks/StocksPage';
@@ -64,7 +64,7 @@ function AppContent() {
       <Routes>
         {/* Public Routes */}
         <Route path="/login/otp" element={<OtpLoginPage />} />
-        <Route path="/login" element={<LoginPage />} />
+        {/* <Route path="/login" element={<LoginPage />} /> */}
         
         {/* Protected Routes */}
         <Route path="/exchange" element={
