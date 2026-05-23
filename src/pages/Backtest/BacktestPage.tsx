@@ -355,7 +355,7 @@ function StepProgress({ current }: { current: 1 | 2 | 3 }) {
 // ── Main page ──────────────────────────────────────────────────────
 export function BacktestPage() {
   const { session } = useAuth();
-  const entitledIndicators = session?.entitledIndicators ?? [];
+  const entitledIndicators = (session?.entitledIndicators ?? []).filter(i => i.id !== 'mcap_top_100');
 
   const [step, setStep] = useState<WizardStep>(1);
   const [selectedStock, setSelectedStock] = useState<StockEntry | null>(null);

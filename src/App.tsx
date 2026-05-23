@@ -4,6 +4,7 @@ import { ThemeProvider } from './config/ThemeContext';
 import { AuthProvider, useAuth } from './config/AuthContext';
 import { Header } from './components/Header';
 import { ChatBot } from './components/ChatBot/ChatBot';
+import { ToastProvider } from './components/Toast';
 // import { LoginPage } from './pages/Login/LoginPage';
 import { OtpLoginPage } from './pages/Login/OtpLoginPage';
 import { ExchangePage } from './pages/Exchange/ExchangePage';
@@ -11,6 +12,8 @@ import { StocksPage } from './pages/Stocks/StocksPage';
 import { PortfolioPage } from './pages/Portfolio/PortfolioPage';
 import { WatchlistPage } from './pages/Watchlist/WatchlistPage';
 import { BacktestPage } from './pages/Backtest/BacktestPage';
+import { EarlyAlertPage } from './pages/Breakout/BreakoutPage';
+import { AlertsPage } from './pages/Alerts/AlertsPage';
 import { StockDetailPage } from './pages/StockDetail/StockDetailPage';
 import { TechnicalIndicatorsPage } from './pages/Parameters/TechnicalIndicatorsPage';
 import type { TechnicalParameter } from './models/Market';
@@ -77,7 +80,7 @@ function AppContent() {
           <ProtectedRoute>
             <>
               <Header />
-              <main className="container mx-auto px-4 py-6 max-w-7xl">
+              <main className="container mx-auto px-12 py-6 max-w-full">
                 {/* <MarketOverview /> */}
                 
                 <Routes>
@@ -119,6 +122,16 @@ function AppContent() {
                   />
 
                   <Route
+                    path="/alerts"
+                    element={<AlertsPage />}
+                  />
+
+                  <Route
+                    path="/early-alert"
+                    element={<EarlyAlertPage />}
+                  />
+
+                  <Route
                     path="/backtest"
                     element={<BacktestPage />}
                   />
@@ -143,9 +156,11 @@ function App() {
   return (
     <ThemeProvider>
       <AuthProvider>
-        <BrowserRouter>
-          <AppContent />
-        </BrowserRouter>
+        <ToastProvider>
+          <BrowserRouter>
+            <AppContent />
+          </BrowserRouter>
+        </ToastProvider>
       </AuthProvider>
     </ThemeProvider>
   );
