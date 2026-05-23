@@ -1,6 +1,5 @@
 import { useNavigate } from 'react-router-dom';
 import { ArrowRight, Check } from 'lucide-react';
-// import { TECHNICAL_PARAMETERS } from '../../config/parameters';
 import { Card } from '../../components/Card';
 import { Button } from '../../components/Button';
 import { Tooltip } from '../../components/Tooltip';
@@ -19,6 +18,10 @@ export function TechnicalIndicatorsPage({
 }: TechnicalIndicatorsPageProps) {
   const navigate = useNavigate();
 
+  // Separate MCap filters from regular indicators
+  const mcapFilters = technicalParameters.filter(p => p.id.startsWith('mcap_'));
+  const regularIndicators = technicalParameters.filter(p => !p.id.startsWith('mcap_'));
+
   const toggleParameter = (id: string) => {
     if (selectedParameters.includes(id)) {
       onParametersChange(selectedParameters.filter(p => p !== id));
@@ -27,31 +30,34 @@ export function TechnicalIndicatorsPage({
     }
   };
 
-  // Get display text for sticky button
+  const toggleMcap = (id: string) => {
+    // Mutually exclusive: deselect any other active mcap, then toggle this one
+    const withoutAnyMcap = selectedParameters.filter(p => !p.startsWith('mcap_'));
+    if (selectedParameters.includes(id)) {
+      // Already active — deselect it
+      onParametersChange(withoutAnyMcap);
+    } else {
+      // Select this one, deselecting others
+      onParametersChange([...withoutAnyMcap, id]);
+    }
+  };
+
   const getButtonText = () => {
     if (selectedParameters.length === 0) return '';
-    
     const maxDisplay = 4;
     const selectedNames = selectedParameters
       .slice(0, maxDisplay)
       .map(name => technicalParameters.find(p => p.id === name)?.name)
       .filter(Boolean);
-    
     let text = selectedNames.join(', ');
-    
-    if (selectedParameters.length > maxDisplay) {
-      text += '...';
-    }
-    
+    if (selectedParameters.length > maxDisplay) text += '...';
     return text;
   };
-
-  // const categories = Array.from(new Set(technicalParameters.map(p => p.category)));
 
   return (
     <div className={`space-y-6 animate-fade-in ${selectedParameters.length > 0 ? 'pb-24' : ''}`}>
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-4 flex-wrap">
         <div>
           <h2 className="text-3xl font-bold tracking-tight text-light-text-primary dark:text-dark-text-primary mb-2">
             Technical Indicators
@@ -60,11 +66,38 @@ export function TechnicalIndicatorsPage({
             Select indicators to analyze stocks ({selectedParameters.length} selected)
           </p>
         </div>
+
+        {/* MCap filter pills */}
+        {mcapFilters.length > 0 && (
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-xs font-medium text-light-text-tertiary dark:text-dark-text-tertiary mr-1">
+              Filter by:
+            </span>
+            {mcapFilters.map(filter => {
+              const isActive = selectedParameters.includes(filter.id);
+              return (
+                <Tooltip key={filter.id} content={filter.description} position="bottom">
+                  <button
+                    onClick={() => toggleMcap(filter.id)}
+                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium border transition-all ${
+                      isActive
+                        ? 'bg-amber-500/15 border-amber-500/40 text-amber-500 dark:text-amber-400'
+                        : 'bg-transparent border-light-border-primary dark:border-dark-border-primary text-light-text-secondary dark:text-dark-text-secondary hover:border-light-text-tertiary dark:hover:border-dark-text-tertiary'
+                    }`}
+                  >
+                    {isActive && <Check className="w-3.5 h-3.5" />}
+                    {filter.name}
+                  </button>
+                </Tooltip>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {/* Parameters Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-        {technicalParameters.map((param) => {
+        {regularIndicators.map((param) => {
           const isSelected = selectedParameters.includes(param.id);
 
           return (
@@ -80,17 +113,11 @@ export function TechnicalIndicatorsPage({
               >
                 <div className="flex items-start justify-between my-1">
                   <div className="flex-1">
-                    {/* HIDDEN: Category badge */}
-                    {/* <div className="hidden items-center gap-2 mb-2">
-                      <span className="text-xs font-semibold px-2 py-1 rounded bg-light-bg-tertiary dark:bg-dark-bg-tertiary text-light-text-secondary dark:text-dark-text-secondary">
-                        {param.category}
-                      </span>
-                    </div> */}
                     <h3 className="text-light-text-primary dark:text-dark-text-primary font-semibold">
                       {param.name}
                     </h3>
                   </div>
-                  
+
                   <div
                     className={`w-6 h-6 rounded-md border-2 flex items-center justify-center transition-all ${
                       isSelected
@@ -107,22 +134,7 @@ export function TechnicalIndicatorsPage({
         })}
       </div>
 
-      {/* HIDDEN: Category Legend */}
-      {/* <div className="hidden flex-wrap gap-3 pt-6 border-t border-light-border-primary dark:border-dark-border-primary">
-        <span className="text-sm text-light-text-tertiary dark:text-dark-text-tertiary font-medium">
-          Categories:
-        </span>
-        {categories.map(category => (
-          <span
-            key={category}
-            className="text-xs px-3 py-1.5 rounded-full bg-light-bg-tertiary dark:bg-dark-bg-tertiary text-light-text-secondary dark:text-dark-text-secondary border border-light-border-primary dark:border-dark-border-primary"
-          >
-            {category}
-          </span>
-        ))}
-      </div> */}
-
-      {/* Sticky Bottom Button - Only show when indicators are selected */}
+      {/* Sticky Bottom Button */}
       {selectedParameters.length > 0 && (
         <div className="fixed bottom-0 left-0 right-0 z-30 backdrop-blur-sm py-4 px-4 animate-slide-up">
           <div className="container mx-auto max-w-7xl">

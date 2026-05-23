@@ -3,24 +3,38 @@
  * Centralized service for all API calls to the FastAPI backend
  */
 
+import type { MarketIndex } from "../models/Market";
+
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://demo2-664110982097.us-central1.run.app';
 
 /**
  * Generic API call handler with error handling
  */
+
+function getAccessToken(): string | null {
+  try {
+    const raw = localStorage.getItem('alumnus_session');
+    if (!raw) return null;
+    return (JSON.parse(raw) as { accessToken?: string }).accessToken ?? null;
+  } catch {
+    return null;
+  }
+}
+
 async function apiCall<T>(
   endpoint: string,
   options: RequestInit = {}
 ): Promise<T> {
   try {
+    const token = getAccessToken();
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+
     const url = `${API_BASE_URL}${endpoint}`;
     console.log('API Call:', url, options.method || 'GET');
     
     const response = await fetch(url, {
-      headers: {
-        'Content-Type': 'application/json',
-        ...options.headers,
-      },
+      headers,
       ...options,
     });
 
@@ -213,6 +227,37 @@ export interface FundamentalsResponse {
   stock_data: StockFundamentals;
 }
 
+export interface EarlyAlertDayData {
+  date: string;
+  close: number;
+  bb_lower: number | null;
+  bb_lower_delta: number | null;
+  bb_upper: number | null;
+  bb_upper_delta: number | null;
+  rsi: number | null;
+  rsi_lower: number | null;
+  rsi_lower_delta: number | null;
+  rsi_upper: number | null;
+  rsi_upper_delta: number | null;
+}
+
+export interface EarlyAlertSignalItem {
+  symbol: string;
+  company_name: string;
+  mcap_top_100: number;
+  bbands_20_EA: number;
+  rsi_14_EA: number;
+  last_5_days: EarlyAlertDayData[];
+}
+
+export interface EarlyAlertsResponse {
+  success: boolean;
+  data: {
+    signals: EarlyAlertSignalItem[];
+  };
+  error: string | null;
+}
+
 // ===== API FUNCTIONS =====
 
 /**
@@ -227,6 +272,12 @@ export async function getSignals(): Promise<{ signals: TechnicalSignal[] }> {
  */
 export async function getExchanges(): Promise<{ exchanges: Exchange[] }> {
   return apiCall('/api/exchanges');
+}
+
+export async function getMarketData(exchange?: string): Promise<MarketIndex[]> {
+    const selectedExchange = exchange || localStorage.getItem('selectedExchange') || 'india';
+    const response = await apiCall<{ status: string; data: { indices: MarketIndex[] } }>(`/api/markets/indices/${selectedExchange}`);
+    return response.data.indices;
 }
 
 /**
@@ -272,7 +323,7 @@ export async function getStockFundamentals(
   symbol: string,
   exchange: string
 ): Promise<FundamentalsResponse> {
-  return apiCall(`/api/stock_snapshot/${exchange}/${symbol}`, {
+  return apiCall(`/api/stock-details/stock_snapshot/${exchange}/${symbol}`, {
     method: 'POST'
   });
 }
@@ -280,7 +331,75 @@ export async function getStockFundamentals(
  * Get stock news
  */
 export async function getStockNews(symbol: string): Promise<StockNewsResponse> {
-  return apiCall(`/api/news/stock/combined/${symbol}`);
+  return apiCall(`/api/stock-details/news/stock/combined/${symbol}`);
+}
+
+/**
+ * Get early alert signals for a given exchange
+ */
+export async function getEarlyAlerts(exchange: string): Promise<EarlyAlertsResponse> {
+  return apiCall(`/api/watchlist/alerts/early?exchange=${exchange}`);
+}
+
+// ===== PORTFOLIO TYPES =====
+
+export interface PortfolioItem {
+  symbol: string;
+  companyName: string;
+  exchange: string;
+  addedAt: string;
+}
+
+export interface PortfolioResponse {
+  status: string;
+  data: {
+    watchlist: PortfolioItem[];
+  };
+}
+
+// ===== PORTFOLIO API =====
+
+export async function getPortfolio(exchange: string): Promise<PortfolioResponse> {
+  return apiCall(`/api/watchlist?exchange=${encodeURIComponent(exchange)}`);
+}
+
+export async function addToPortfolio(
+  symbol: string,
+  company_name: string,
+  exchange: string
+): Promise<PortfolioItem> {
+  return apiCall('/api/watchlist', {
+    method: 'POST',
+    body: JSON.stringify({ symbol, company_name, exchange: exchange.toLowerCase() }),
+  });
+}
+
+export async function removeFromPortfolio(symbol: string): Promise<void> {
+  return apiCall(`/api/watchlist/${encodeURIComponent(symbol)}`, { method: 'DELETE' });
+}
+
+// ===== ACTIVE ALERTS TYPES =====
+
+export interface ActiveAlertSignal {
+  symbol: string;
+  company_name: string;
+  bbands_20: number;
+  rsi_14: number;
+  bbands_20_EA: number;
+  rsi_14_EA: number;
+  description: string;
+}
+
+export interface ActiveAlertsResponse {
+  success: boolean;
+  data: {
+    signals: ActiveAlertSignal[];
+  };
+  error: string | null;
+}
+
+export async function getActiveAlerts(exchange: string): Promise<ActiveAlertsResponse> {
+  return apiCall(`/api/watchlist/alerts/active?exchange=${encodeURIComponent(exchange)}`);
 }
 
 /**

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Activity, TrendingUp, Briefcase, Sun, Moon, Menu, X, LogOut, Settings, User, UserCircle, BookMarked, FlaskConical } from 'lucide-react';
+import { Activity, TrendingUp, Briefcase, Bell, Sun, Moon, Menu, X, LogOut, Settings, User, UserCircle, BookMarked, FlaskConical, Zap } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useTheme } from '../config/ThemeContext';
 import { useAuth } from '../config/AuthContext';
@@ -25,7 +25,7 @@ export function Header() {
   const navItems = [
     { path: '/technical-indicators', label: 'Indicators', icon: <Activity className="w-4 h-4" /> },
     { path: '/stocks', label: 'Stocks', icon: <TrendingUp className="w-4 h-4" /> },
-    { path: '/watchlist', label: 'Watchlist', icon: <BookMarked className="w-4 h-4" /> },
+    { path: '/alerts', label: 'Active Alerts', icon: <Bell className="w-4 h-4" /> },
   ];
 
   useEffect(() => {
@@ -59,7 +59,7 @@ export function Header() {
   return (
     <>
       <header className="border-b border-light-border-primary dark:border-dark-border-primary bg-light-bg-elevated dark:bg-dark-bg-elevated shadow-sm sticky top-0 z-40">
-        <div className="container mx-auto px-4 py-4 max-w-7xl">
+        <div className="container mx-auto px-12 py-4 max-w-full">
           <div className="flex items-center justify-between">
             {/* Logo */}
             <div 
@@ -157,11 +157,24 @@ export function Header() {
                   </DropdownItem>
 
                   <DropdownItem
+                    icon={<BookMarked className="w-4 h-4" />}
+                    onClick={() => navigate('/watchlist')}
+                  >
+                    Watchlist
+                  </DropdownItem>
+
+                  <DropdownItem
                     icon={<Briefcase className="w-4 h-4" />}
-                    // onClick={() => navigate('/portfolio')}
-                    className='cursor-not-allowed'
+                    onClick={() => navigate('/portfolio')}
                   >
                     Portfolio
+                  </DropdownItem>
+
+                  <DropdownItem
+                    icon={<Zap className="w-4 h-4" />}
+                    onClick={() => navigate('/early-alert')}
+                  >
+                    Early Alerts
                   </DropdownItem>
 
                   <DropdownItem
@@ -243,7 +256,7 @@ export function Header() {
               )}
 
               {/* Navigation Items */}
-              <nav className="space-y-2 mb-4">
+              <nav className="space-y-1 mb-3">
                 {navItems.map(item => (
                   <button
                     key={item.path}
@@ -259,6 +272,35 @@ export function Header() {
                   </button>
                 ))}
               </nav>
+
+              {/* Divider */}
+              <div className="border-t border-light-border-primary dark:border-dark-border-primary my-3" />
+
+              {/* Settings items */}
+              <nav className="space-y-1 mb-3">
+                {[
+                  { path: '/watchlist',   label: 'Watchlist',    icon: <BookMarked className="w-4 h-4" /> },
+                  { path: '/portfolio',   label: 'Portfolio',    icon: <Briefcase  className="w-4 h-4" /> },
+                  { path: '/early-alert', label: 'Early Alerts', icon: <Zap        className="w-4 h-4" /> },
+                  { path: '/backtest',    label: 'Backtest',     icon: <FlaskConical className="w-4 h-4" /> },
+                ].map(item => (
+                  <button
+                    key={item.path}
+                    onClick={() => handleNavigation(item.path)}
+                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg font-medium text-sm transition-all ${
+                      isActive(item.path)
+                        ? 'bg-gradient-to-r from-light-accent-primary to-light-accent-secondary dark:from-dark-accent-primary dark:to-dark-accent-secondary text-white shadow-lg'
+                        : 'text-light-text-secondary dark:text-dark-text-secondary hover:bg-light-bg-tertiary dark:hover:bg-dark-bg-tertiary'
+                    }`}
+                  >
+                    {item.icon}
+                    <span>{item.label}</span>
+                  </button>
+                ))}
+              </nav>
+
+              {/* Divider */}
+              <div className="border-t border-light-border-primary dark:border-dark-border-primary my-3" />
 
               {/* Logout button */}
               <button

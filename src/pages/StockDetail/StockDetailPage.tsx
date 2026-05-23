@@ -22,7 +22,6 @@ import { useTheme } from '../../config/ThemeContext';
 import {
   formatStockPrice,
   formatCurrency,
-  formatCompactNumber,
   formatDate,
   formatChange,
 } from '../../utils/formatter';
@@ -56,9 +55,21 @@ export function StockDetailPage({ indicators }: StockDetailPageProps) {
   const location = useLocation();
   const { theme } = useTheme();
 
-  const fromWatchlist = (location.state as { from?: string } | null)?.from === 'watchlist';
-  const backLabel = fromWatchlist ? 'Back to Watchlist' : 'Back to Stocks';
-  const backPath = fromWatchlist ? '/watchlist' : '/stocks';
+  const navState = location.state as { from?: string; exchange?: string } | null;
+  const from = navState?.from;
+  const stateExchange = navState?.exchange;
+  const backLabel =
+    from === 'watchlist'  ? 'Back to Watchlist' :
+    from === 'early-alert' ? 'Back to Early Alert Scanner' :
+    from === 'alerts'     ? 'Back to Active Alerts' :
+    from === 'portfolio'  ? 'Back to Portfolio' :
+    'Back to Stocks';
+  const backPath =
+    from === 'watchlist'   ? '/watchlist' :
+    from === 'early-alert' ? '/early-alert' :
+    from === 'alerts'     ? '/alerts' :
+    from === 'portfolio'  ? '/portfolio' :
+    '/stocks';
 
   // ── chart refs ──────────────────────────────────────────────────────
   const mainChartContainerRef = useRef<HTMLDivElement>(null);
@@ -108,7 +119,7 @@ export function StockDetailPage({ indicators }: StockDetailPageProps) {
     (async () => {
       setStockDetailLoading('Loading stock details...');
       try {
-        setStockDetail(await getStockDetail(s, indicators));
+        setStockDetail(await getStockDetail(s, indicators, stateExchange));
         setStockDetailLoading('');
       } catch {
         setStockDetailLoading('Failed to load stock details.');
@@ -128,7 +139,7 @@ export function StockDetailPage({ indicators }: StockDetailPageProps) {
     (async () => {
       setStockFundamentalsLoading('Loading fundamentals...');
       try {
-        setStockFundamentals(await getStockFundamentalsData(s));
+        setStockFundamentals(await getStockFundamentalsData(s, stateExchange));
         setStockFundamentalsLoading('');
       } catch {
         setStockFundamentalsLoading('Failed to load fundamentals.');
@@ -490,7 +501,7 @@ export function StockDetailPage({ indicators }: StockDetailPageProps) {
         <h3 className="text-lg font-semibold text-light-text-primary dark:text-dark-text-primary mb-2">
           {selectedChartableNames.length > 0
             ? `Summary based on ${selectedChartableNames.join(', ')} (AI Generated)`
-            : 'Summary (AI Generated'}
+            : 'Summary (AI Generated)'}
         </h3>
         <p className="text-sm text-light-text-secondary dark:text-dark-text-secondary">
           <Markdown>
@@ -600,18 +611,18 @@ export function StockDetailPage({ indicators }: StockDetailPageProps) {
           </div>
         ) : (
           <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-            <DataItem label="Open" value={formatStockPrice(stockFundamentals?.open || 0)} />
-            <DataItem label="High" value={formatStockPrice(stockFundamentals?.high || 0)} />
-            <DataItem label="Low" value={formatStockPrice(stockFundamentals?.low || 0)} />
-            <DataItem label="Close" value={formatStockPrice(stockFundamentals?.close || 0)} />
-            <DataItem label="Volume" value={formatCompactNumber(stockFundamentals?.volume || 0, 0)} />
-            <DataItem label="Avg. Vol" value={formatCompactNumber(stockFundamentals?.avgVolume || 0, 0)} />
-            <DataItem label="Mkt. Cap" value={formatCompactNumber(stockFundamentals?.marketCap || 0, 1)} />
-            <DataItem label="52wk high" value={formatStockPrice(stockFundamentals?.weekHigh52 || 0)} />
-            <DataItem label="52wk low" value={formatStockPrice(stockFundamentals?.weekLow52 || 0)} />
-            <DataItem label="P/E Ratio" value={stockFundamentals?.peratio?.toFixed(2) || ''} />
-            <DataItem label="P/B Ratio" value={stockFundamentals?.pbratio?.toFixed(2) || ''} />
-            <DataItem label="EPS" value={stockFundamentals?.eps?.toString() || ''} />
+            <DataItem label="Open"      value={stockFundamentals?.open      ?? '—'} />
+            <DataItem label="High"      value={stockFundamentals?.high      ?? '—'} />
+            <DataItem label="Low"       value={stockFundamentals?.low       ?? '—'} />
+            <DataItem label="Close"     value={stockFundamentals?.close     ?? '—'} />
+            <DataItem label="Volume"    value={stockFundamentals?.volume    ?? '—'} />
+            <DataItem label="Avg. Vol"  value={stockFundamentals?.avgVolume ?? '—'} />
+            <DataItem label="Mkt. Cap"  value={stockFundamentals?.marketCap ?? '—'} />
+            <DataItem label="52wk high" value={stockFundamentals?.weekHigh52 ?? '—'} />
+            <DataItem label="52wk low"  value={stockFundamentals?.weekLow52  ?? '—'} />
+            <DataItem label="P/E Ratio" value={stockFundamentals?.peratio   ?? '—'} />
+            <DataItem label="P/B Ratio" value={stockFundamentals?.pbratio   ?? '—'} />
+            <DataItem label="EPS"       value={stockFundamentals?.eps       ?? '—'} />
           </div>
         )}
       </Card>

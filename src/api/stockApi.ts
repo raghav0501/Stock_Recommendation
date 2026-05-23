@@ -38,18 +38,18 @@ export interface StockNewsArticle {
 }
 
 export interface StockFundamentals {
-  open: number;
-  high: number;
-  low: number;
-  close: number;
-  volume: number;
-  avgVolume: number;
-  marketCap: number;
-  weekHigh52: number;
-  weekLow52: number;
-  peratio: number;
-  pbratio: number;
-  eps: number;
+  open: string;
+  high: string;
+  low: string;
+  close: string;
+  volume: string;
+  avgVolume: string;
+  marketCap: string;
+  weekHigh52: string;
+  weekLow52: string;
+  peratio: string;
+  pbratio: string;
+  eps: string;
 }
 
 /**
@@ -159,8 +159,8 @@ export async function getFilteredStocks(selectedParameters: string[] = []): Prom
 /**
  * Function to fetch stock details only
  */
-export async function getStockDetail(symbol: string, indicators: string[]): Promise<StockDetail | null> {
-  const exchange = localStorage.getItem('selectedExchange') || 'india';
+export async function getStockDetail(symbol: string, indicators: string[], exchangeOverride?: string): Promise<StockDetail | null> {
+  const exchange = exchangeOverride || localStorage.getItem('selectedExchange') || 'india';
   
   try {
     const fullSymbol = exchange === 'india' && !symbol.endsWith('.NS') 
@@ -248,8 +248,33 @@ export async function getStockNewsArticle(symbol: string): Promise<StockNewsArti
 /**
  * Function to get the latest fundamentals for a stock
  */
-export async function getStockFundamentalsData(symbol: string): Promise<StockFundamentals | null> {
-  const exchange = localStorage.getItem('selectedExchange') || 'india';
+function getCurrencySymbol(currency: string): string {
+  const map: Record<string, string> = { INR: '₹', USD: '$', GBP: '£', EUR: '€', JPY: '¥' };
+  return map[currency?.toUpperCase()] ?? currency ?? '';
+}
+
+function fmtPrice(value: number | null | undefined, sym: string): string {
+  if (value == null || isNaN(value)) return '—';
+  return `${sym}${value.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
+function fmtCompact(value: number | null | undefined): string {
+  if (value == null || isNaN(value)) return '—';
+  if (value >= 1e12) return `${(value / 1e12).toFixed(2)}T`;
+  if (value >= 1e9)  return `${(value / 1e9).toFixed(2)}B`;
+  if (value >= 1e7)  return `${(value / 1e7).toFixed(2)}Cr`;
+  if (value >= 1e6)  return `${(value / 1e6).toFixed(2)}M`;
+  if (value >= 1e3)  return `${(value / 1e3).toFixed(0)}K`;
+  return value.toLocaleString();
+}
+
+function fmtRatio(value: number | null | undefined): string {
+  if (value == null || isNaN(value)) return '—';
+  return value.toFixed(2);
+}
+
+export async function getStockFundamentalsData(symbol: string, exchangeOverride?: string): Promise<StockFundamentals | null> {
+  const exchange = exchangeOverride || localStorage.getItem('selectedExchange') || 'india';
   try {
     const fullSymbol = exchange === 'india' && !symbol.endsWith('.NS')
       ? `${symbol}.NS`
@@ -259,19 +284,21 @@ export async function getStockFundamentalsData(symbol: string): Promise<StockFun
       console.error('Failed to fetch stock fundamentals');
       return null;
     }
+    const d = fundamentalsResponse.stock_data;
+    const sym = getCurrencySymbol(fundamentalsResponse.currency);
     return {
-      open: fundamentalsResponse.stock_data.open,
-      high: fundamentalsResponse.stock_data.high,
-      low: fundamentalsResponse.stock_data.low,
-      close: fundamentalsResponse.stock_data.close,
-      volume: fundamentalsResponse.stock_data.volume,
-      avgVolume: fundamentalsResponse.stock_data.avg_volume,
-      marketCap: fundamentalsResponse.stock_data.market_cap,
-      weekHigh52: fundamentalsResponse.stock_data.high_52w,
-      weekLow52: fundamentalsResponse.stock_data.low_52w,
-      peratio: fundamentalsResponse.stock_data.trailing_pe,
-      pbratio: fundamentalsResponse.stock_data.price_to_book,
-      eps: fundamentalsResponse.stock_data.eps,
+      open:      fmtPrice(d.open, sym),
+      high:      fmtPrice(d.high, sym),
+      low:       fmtPrice(d.low, sym),
+      close:     fmtPrice(d.close, sym),
+      volume:    fmtCompact(d.volume),
+      avgVolume: fmtCompact(d.avg_volume),
+      marketCap: `${sym}${fmtCompact(d.market_cap)}`,
+      weekHigh52: fmtPrice(d.high_52w, sym),
+      weekLow52:  fmtPrice(d.low_52w, sym),
+      peratio:    fmtRatio(d.trailing_pe),
+      pbratio:    fmtRatio(d.price_to_book),
+      eps:        fmtPrice(d.eps, sym),
     };
   } catch (error) {
     console.error('Failed to load stock fundamentals:', error);
