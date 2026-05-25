@@ -1,5 +1,6 @@
 import { getPortfolio, addToPortfolio, removeFromPortfolio, getActiveAlerts as fetchActiveAlerts } from './backendService';
 import type { PortfolioHolding, PortfolioAlert, AlertSignal } from '../models/Portfolio';
+import { sanitizeSymbol } from '../utils/sanitize';
 
 function toSignal(val: number): AlertSignal {
   if (val === 1) return 1;
@@ -37,11 +38,11 @@ export async function getHoldings(): Promise<PortfolioHolding[]> {
 }
 
 export async function addHolding(holding: PortfolioHolding): Promise<void> {
-  await addToPortfolio(holding.symbol, holding.companyName, holding.exchange);
+  await addToPortfolio(sanitizeSymbol(holding.symbol), holding.companyName.trim().slice(0, 200), holding.exchange);
 }
 
 export async function removeHolding(symbol: string): Promise<void> {
-  await removeFromPortfolio(symbol);
+  await removeFromPortfolio(sanitizeSymbol(symbol));
 }
 
 // ── Active Alerts ──────────────────────────────────────────────────
