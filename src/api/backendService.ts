@@ -1,53 +1,121 @@
-/**
- * Backend API Service
- * Centralized service for all API calls to the FastAPI backend
- */
-
 import type { MarketIndex } from "../models/Market";
+import { sanitizeSymbol, sanitizeExchange } from "../utils/sanitize";
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://demo2-664110982097.us-central1.run.app';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
-/**
- * Generic API call handler with error handling
- */
+// ── Token helpers ──────────────────────────────────────────────────
 
-function getAccessToken(): string | null {
+function getStoredSession(): Record<string, string> | null {
   try {
     const raw = localStorage.getItem('alumnus_session');
-    if (!raw) return null;
-    return (JSON.parse(raw) as { accessToken?: string }).accessToken ?? null;
+    return raw ? (JSON.parse(raw) as Record<string, string>) : null;
   } catch {
     return null;
   }
 }
 
-async function apiCall<T>(
-  endpoint: string,
-  options: RequestInit = {}
-): Promise<T> {
-  try {
-    const token = getAccessToken();
-    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-    if (token) headers['Authorization'] = `Bearer ${token}`;
+function getAccessToken(): string | null {
+  return getStoredSession()?.accessToken ?? null;
+}
 
-    const url = `${API_BASE_URL}${endpoint}`;
-    console.log('API Call:', url, options.method || 'GET');
-    
-    const response = await fetch(url, {
-      headers,
-      ...options,
-    });
+function getRefreshToken(): string | null {
+  return getStoredSession()?.refreshToken ?? null;
+}
 
-    if (!response.ok) {
-      throw new Error(`API Error: ${response.status} ${response.statusText}`);
+function saveTokens(accessToken: string, refreshToken: string): void {
+  const session = getStoredSession() ?? {};
+  localStorage.setItem('alumnus_session', JSON.stringify({ ...session, accessToken, refreshToken }));
+}
+
+function forceLogout(): void {
+  localStorage.removeItem('alumnus_session');
+  localStorage.removeItem('alumnus_user');
+  window.location.href = '/login/otp';
+}
+
+// ── Single-flight refresh guard ────────────────────────────────────
+// Ensures only one /auth/refresh call goes out at a time; all other
+// concurrent INVALID_TOKEN responses queue on the same promise.
+
+let pendingRefresh: Promise<string> | null = null;
+
+async function refreshAccessToken(): Promise<string> {
+  if (pendingRefresh) return pendingRefresh;
+
+  pendingRefresh = (async () => {
+    const refreshToken = getRefreshToken();
+    if (!refreshToken) {
+      forceLogout();
+      throw new Error('No refresh token available');
     }
 
-    const data = await response.json();
-    return data;
-  } catch (error) {
-    console.error('API Call Error:', error);
-    throw error;
+    const response = await fetch(`${API_BASE_URL}/auth/refresh`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refreshToken }),
+    });
+
+    const body = await response.json().catch(() => null);
+
+    if (!response.ok || body?.status !== 'success') {
+      forceLogout();
+      throw new Error('Session expired. Please log in again.');
+    }
+
+    const { accessToken, refreshToken: newRefreshToken } = body.data as {
+      accessToken: string;
+      refreshToken: string;
+    };
+    saveTokens(accessToken, newRefreshToken);
+    return accessToken;
+  })().finally(() => {
+    pendingRefresh = null;
+  });
+
+  return pendingRefresh;
+}
+
+// ── Core API call ──────────────────────────────────────────────────
+
+async function apiCall<T>(
+  endpoint: string,
+  options: RequestInit = {},
+  isRetry = false
+): Promise<T> {
+  const token = getAccessToken();
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+
+  const response = await fetch(`${API_BASE_URL}${endpoint}`, { headers, ...options });
+
+  // Parse body regardless of status so we can inspect error codes
+  const data: unknown = await response.json().catch(() => null);
+
+  // Detect expired token by response body code
+  const isTokenExpired =
+    (data as { code?: string } | null)?.code === 'INVALID_TOKEN';
+
+  if (isTokenExpired) {
+    if (isRetry) {
+      // Refresh succeeded but the retry still failed — force logout
+      forceLogout();
+      throw new Error('Session expired. Please log in again.');
+    }
+    const newToken = await refreshAccessToken();
+    const retryHeaders: Record<string, string> = {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${newToken}`,
+    };
+    return apiCall<T>(endpoint, { ...options, headers: retryHeaders }, true);
   }
+
+  if (!response.ok) {
+    const message = (data as { message?: string } | null)?.message
+      ?? `${response.status} ${response.statusText}`;
+    throw new Error(message);
+  }
+
+  return data as T;
 }
 
 // ===== TYPES =====
@@ -275,8 +343,8 @@ export async function getExchanges(): Promise<{ exchanges: Exchange[] }> {
 }
 
 export async function getMarketData(exchange?: string): Promise<MarketIndex[]> {
-    const selectedExchange = exchange || localStorage.getItem('selectedExchange') || 'india';
-    const response = await apiCall<{ status: string; data: { indices: MarketIndex[] } }>(`/api/markets/indices/${selectedExchange}`);
+    const selectedExchange = sanitizeExchange(exchange || localStorage.getItem('selectedExchange') || 'india');
+    const response = await apiCall<{ status: string; data: { indices: MarketIndex[] } }>(`/api/markets/indices/${encodeURIComponent(selectedExchange)}`);
     return response.data.indices;
 }
 
@@ -323,7 +391,9 @@ export async function getStockFundamentals(
   symbol: string,
   exchange: string
 ): Promise<FundamentalsResponse> {
-  return apiCall(`/api/stock-details/stock_snapshot/${exchange}/${symbol}`, {
+  const safeExchange = sanitizeExchange(exchange);
+  const safeSymbol = sanitizeSymbol(symbol);
+  return apiCall(`/api/stock-details/stock_snapshot/${encodeURIComponent(safeExchange)}/${encodeURIComponent(safeSymbol)}`, {
     method: 'POST'
   });
 }
@@ -331,14 +401,14 @@ export async function getStockFundamentals(
  * Get stock news
  */
 export async function getStockNews(symbol: string): Promise<StockNewsResponse> {
-  return apiCall(`/api/stock-details/news/stock/combined/${symbol}`);
+  return apiCall(`/api/stock-details/news/stock/combined/${encodeURIComponent(sanitizeSymbol(symbol))}`);
 }
 
 /**
  * Get early alert signals for a given exchange
  */
 export async function getEarlyAlerts(exchange: string): Promise<EarlyAlertsResponse> {
-  return apiCall(`/api/watchlist/alerts/early?exchange=${exchange}`);
+  return apiCall(`/api/watchlist/alerts/early?exchange=${encodeURIComponent(sanitizeExchange(exchange))}`);
 }
 
 // ===== PORTFOLIO TYPES =====
