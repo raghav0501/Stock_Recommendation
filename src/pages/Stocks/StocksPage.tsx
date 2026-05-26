@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { Settings } from 'lucide-react';
 import type { StockSummary } from '../../models/Stock';
 import { getFilteredStocks } from '../../api/stockApi';
+import { useToast } from '../../components/Toast';
+import { toastMessage } from '../../utils/errorMessage';
 import { TECHNICAL_PARAMETERS } from '../../config/parameters';
 import { Button } from '../../components/Button';
 import { SimpleView } from './components/SimpleView';
@@ -15,6 +17,7 @@ interface StocksPageProps {
 // type ViewMode = 'simple' | 'advanced';
 
 export function StocksPage({ parameters, onParametersChange }: StocksPageProps) {
+  const { showToast } = useToast();
   const [stocks, setStocks] = useState<StockSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const viewMode = 'simple';
@@ -38,8 +41,8 @@ export function StocksPage({ parameters, onParametersChange }: StocksPageProps) 
       await new Promise(resolve => setTimeout(resolve, 5000));
       const data = await getFilteredStocks(parameters);
       setStocks(data);
-    } catch (error) {
-      console.error('Failed to load stocks:', error);
+    } catch (err) {
+      showToast(toastMessage(err));
     } finally {
       setLoading(false);
     }

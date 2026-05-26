@@ -8,6 +8,8 @@ import { getEarlyAlertStocks } from '../../api/breakoutApi';
 import type { EarlyAlertStock, EarlyAlertFilter } from '../../models/Breakout';
 import { EARLY_ALERT_LABELS, EARLY_ALERT_COLORS } from '../../models/Breakout';
 import { BADGE, CHIP } from '../../config/signalColors';
+import { useToast } from '../../components/Toast';
+import { toastMessage } from '../../utils/errorMessage';
 
 const ALL_FILTERS: EarlyAlertFilter[] = ['earlyAlertBB', 'earlyAlertRSI', 'mcapTop100'];
 
@@ -30,6 +32,7 @@ function closePriceInfo(stock: EarlyAlertStock): { price: number; pct: number } 
 export function EarlyAlertPage() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { showToast } = useToast();
   const incomingSymbol = (location.state as { symbol?: string } | null)?.symbol;
   const [stocks, setStocks] = useState<EarlyAlertStock[]>([]);
   const [loading, setLoading] = useState(true);
@@ -37,14 +40,16 @@ export function EarlyAlertPage() {
   const [activeFilters, setActiveFilters] = useState<Set<EarlyAlertFilter>>(new Set());
 
   useEffect(() => {
-    getEarlyAlertStocks().then(data => {
-      setStocks(data);
-      const preSelected = incomingSymbol
-        ? (data.find(s => s.symbol === incomingSymbol) ?? data[0] ?? null)
-        : (data[0] ?? null);
-      setSelected(preSelected);
-      setLoading(false);
-    });
+    getEarlyAlertStocks()
+      .then(data => {
+        setStocks(data);
+        const preSelected = incomingSymbol
+          ? (data.find(s => s.symbol === incomingSymbol) ?? data[0] ?? null)
+          : (data[0] ?? null);
+        setSelected(preSelected);
+      })
+      .catch(err => showToast(toastMessage(err)))
+      .finally(() => setLoading(false));
   // incomingSymbol intentionally excluded — run once on mount
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

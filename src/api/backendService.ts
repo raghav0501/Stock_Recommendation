@@ -1,5 +1,6 @@
 import type { MarketIndex } from "../models/Market";
 import { sanitizeSymbol, sanitizeExchange } from "../utils/sanitize";
+import { ApiError } from "../utils/apiError";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
@@ -86,7 +87,12 @@ async function apiCall<T>(
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
   if (token) headers['Authorization'] = `Bearer ${token}`;
 
-  const response = await fetch(`${API_BASE_URL}${endpoint}`, { headers, ...options });
+  let response: Response;
+  try {
+    response = await fetch(`${API_BASE_URL}${endpoint}`, { headers, ...options });
+  } catch {
+    throw new ApiError('network', null, 'No internet connection');
+  }
 
   // Parse body regardless of status so we can inspect error codes
   const data: unknown = await response.json().catch(() => null);
@@ -112,7 +118,10 @@ async function apiCall<T>(
   if (!response.ok) {
     const message = (data as { message?: string } | null)?.message
       ?? `${response.status} ${response.statusText}`;
-    throw new Error(message);
+    const type =
+      response.status === 403 ? 'forbidden' :
+      response.status >= 500 ? 'server' : 'client';
+    throw new ApiError(type, response.status, message);
   }
 
   return data as T;

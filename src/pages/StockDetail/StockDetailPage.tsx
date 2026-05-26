@@ -44,6 +44,8 @@ import {
 } from '../../config/parameters';
 import { Loader } from '../../components/Loader';
 import Markdown from 'markdown-to-jsx';
+import { useToast } from '../../components/Toast';
+import { toastMessage } from '../../utils/errorMessage';
 
 interface StockDetailPageProps {
   indicators: string[];
@@ -52,6 +54,7 @@ interface StockDetailPageProps {
 export function StockDetailPage({ indicators }: StockDetailPageProps) {
   const { symbol } = useParams<{ symbol: string }>();
   const navigate = useNavigate();
+  const { showToast } = useToast();
   const location = useLocation();
   const { theme } = useTheme();
 
@@ -120,9 +123,10 @@ export function StockDetailPage({ indicators }: StockDetailPageProps) {
       setStockDetailLoading('Loading stock details...');
       try {
         setStockDetail(await getStockDetail(s, indicators, stateExchange));
+      } catch (err) {
+        showToast(toastMessage(err));
+      } finally {
         setStockDetailLoading('');
-      } catch {
-        setStockDetailLoading('Failed to load stock details.');
       }
     })();
 
@@ -130,9 +134,10 @@ export function StockDetailPage({ indicators }: StockDetailPageProps) {
       setStockNewsLoading('Loading news...');
       try {
         setStockNews(await getStockNewsArticle(s));
+      } catch (err) {
+        showToast(toastMessage(err));
+      } finally {
         setStockNewsLoading('');
-      } catch {
-        setStockNewsLoading('Failed to load news.');
       }
     })();
 
@@ -140,9 +145,10 @@ export function StockDetailPage({ indicators }: StockDetailPageProps) {
       setStockFundamentalsLoading('Loading fundamentals...');
       try {
         setStockFundamentals(await getStockFundamentalsData(s, stateExchange));
+      } catch (err) {
+        showToast(toastMessage(err));
+      } finally {
         setStockFundamentalsLoading('');
-      } catch {
-        setStockFundamentalsLoading('Failed to load fundamentals.');
       }
     })();
   };

@@ -7,10 +7,13 @@ import { Dropdown, DropdownDivider, DropdownItem, DropdownSection } from './Drop
 import { MarketOverview } from './MarketOverview';
 import type { MarketIndex, MarketStatus } from '../models/Market';
 import { getMarketIndices, getMarketStatus } from '../api/marketApi';
+import { useToast } from './Toast';
+import { toastMessage } from '../utils/errorMessage';
 
 export function Header() {
   const { theme, toggleTheme } = useTheme();
   const { logout, user } = useAuth();
+  const { showToast } = useToast();
   const navigate = useNavigate();
   const location = useLocation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -39,7 +42,7 @@ export function Header() {
       const [indices, status] = await Promise.all([getMarketIndices(), getMarketStatus()]);
       setMarketData({ indices, status });
     } catch (err) {
-      console.error("Failed to sync market data", err);
+      showToast(toastMessage(err));
     } finally {
       setIsMarketLoading(false);
     }

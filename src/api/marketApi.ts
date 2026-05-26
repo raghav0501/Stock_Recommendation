@@ -7,15 +7,7 @@ import { getMarketData } from './backendService';
  * Fetch real-time market indices from backend API
  */
 export async function getMarketIndices(exchange?: string): Promise<MarketIndex[]> {
-  try {
-    const response = await getMarketData(exchange);
-    return response;
-  } catch (error) {
-    console.error('Failed to fetch market indices:', error);
-    // Fallback to mock data if API fails
-    // return getMockIndices(exchange);
-    throw error; // Re-throw to let the caller handle it
-  }
+  return getMarketData(exchange);
 }
 
 export async function getMarketStatus(): Promise<MarketStatus> {
