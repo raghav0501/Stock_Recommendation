@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { ErrorBoundary } from 'react-error-boundary';
 import { ThemeProvider } from './config/ThemeContext';
 import { AuthProvider, useAuth } from './config/AuthContext';
 import { Header } from './components/Header';
 import { ChatBot } from './components/ChatBot/ChatBot';
 import { ToastProvider } from './components/Toast';
+import { ErrorFallback } from './components/ErrorFallback';
 // import { LoginPage } from './pages/Login/LoginPage';
 import { OtpLoginPage } from './pages/Login/OtpLoginPage';
 import { ExchangePage } from './pages/Exchange/ExchangePage';
@@ -81,8 +83,7 @@ function AppContent() {
             <>
               <Header />
               <main className="container mx-auto px-12 py-6 max-w-full">
-                {/* <MarketOverview /> */}
-                
+                <ErrorBoundary FallbackComponent={ErrorFallback}>
                 <Routes>
                   <Route
                     path="/technical-indicators"
@@ -138,6 +139,7 @@ function AppContent() {
 
                   <Route path="*" element={<Navigate to="/exchange" replace />} />
                 </Routes>
+                </ErrorBoundary>
               </main>
               
               <ChatBot />

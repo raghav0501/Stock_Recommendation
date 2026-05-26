@@ -354,6 +354,9 @@ export async function getExchanges(): Promise<{ exchanges: Exchange[] }> {
 export async function getMarketData(exchange?: string): Promise<MarketIndex[]> {
     const selectedExchange = sanitizeExchange(exchange || localStorage.getItem('selectedExchange') || 'india');
     const response = await apiCall<{ status: string; data: { indices: MarketIndex[] } }>(`/api/markets/indices/${encodeURIComponent(selectedExchange)}`);
+    if (!response.data?.indices) {
+      throw new ApiError('server', null, 'Malformed market indices response');
+    }
     return response.data.indices;
 }
 

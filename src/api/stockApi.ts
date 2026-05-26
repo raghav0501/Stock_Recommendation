@@ -1,5 +1,6 @@
 import type { Stock } from '../models/Stock';
 import { screenStocks, mapBackendSentiment, getStockPriceChange, getStockDetails, getStockNews, getStockFundamentals, type TechnicalData } from './backendService';
+import { ApiError } from '../utils/apiError';
 
 export interface StockDetail {
   metadata: {
@@ -116,9 +117,9 @@ export async function getStockDetail(symbol: string, indicators: string[], excha
       country: detailsResponse.metadata?.country ?? '',
       employees: detailsResponse.metadata?.employees ?? 0,
     },
-    technicalIndicators: detailsResponse.technicals,
-    chartData: detailsResponse.ohlcv,
-    summary: detailsResponse.summary,
+    technicalIndicators: detailsResponse.technicals ?? [],
+    chartData: detailsResponse.ohlcv ?? [],
+    summary: detailsResponse.summary ?? '',
   };
 }
 
@@ -134,7 +135,7 @@ export async function getStockNewsArticle(symbol: string): Promise<StockNewsArti
     throw new Error('Failed to fetch stock news');
   }
 
-  const rssNews = newsResponse.rss_news.map(article => ({
+  const rssNews = (newsResponse.rss_news ?? []).map(article => ({
     newsId: article.news_id,
     title: article.title,
     url: article.url,
@@ -144,7 +145,7 @@ export async function getStockNewsArticle(symbol: string): Promise<StockNewsArti
     thumbnailUrl: article.thumbnail_url,
   }));
 
-  const telegramNews = newsResponse.telegram_news.map(article => ({
+  const telegramNews = (newsResponse.telegram_news ?? []).map(article => ({
     newsId: article.news_id,
     title: article.title,
     url: article.url,
@@ -158,7 +159,7 @@ export async function getStockNewsArticle(symbol: string): Promise<StockNewsArti
     (a, b) => new Date(b.publishedDate).getTime() - new Date(a.publishedDate).getTime()
   );
 
-  return { news, newsSummary: newsResponse.full_summary };
+  return { news, newsSummary: newsResponse.full_summary ?? '' };
 }
 
 /**
@@ -193,8 +194,11 @@ export async function getStockFundamentalsData(symbol: string, exchangeOverride?
   const exchange = exchangeOverride || localStorage.getItem('selectedExchange') || 'india';
   const fullSymbol = exchange === 'india' && !symbol.endsWith('.NS') ? `${symbol}.NS` : symbol;
   const fundamentalsResponse = await getStockFundamentals(fullSymbol, exchange);
+  if (!fundamentalsResponse.stock_data) {
+    throw new ApiError('server', null, 'Malformed fundamentals response');
+  }
   const d = fundamentalsResponse.stock_data;
-  const sym = getCurrencySymbol(fundamentalsResponse.currency);
+  const sym = getCurrencySymbol(fundamentalsResponse.currency ?? '');
   return {
     open:       fmtPrice(d.open, sym),
     high:       fmtPrice(d.high, sym),
