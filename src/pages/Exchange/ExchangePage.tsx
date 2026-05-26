@@ -43,7 +43,8 @@ export function ExchangePage() {
     // if (selectedExchange) {
       // Store selected exchange in localStorage for future use
       localStorage.setItem('selectedExchange', id);
-      navigate('/technical-indicators');
+      // navigate('/technical-indicators'); // original flow
+      navigate('/alerts');
     // }
   };
 
