@@ -113,45 +113,27 @@ export function StockDetailPage({ indicators }: StockDetailPageProps) {
 
   // ── data loading ────────────────────────────────────────────────────
   useEffect(() => {
-    if (symbol) loadStockData();
+    if (!symbol) return;
+
+    setStockDetailLoading('Loading stock details...');
+    getStockDetail(symbol, indicators, stateExchange)
+      .then(data => setStockDetail(data))
+      .catch(err => showToast(toastMessage(err)))
+      .finally(() => setStockDetailLoading(''));
+
+    setStockNewsLoading('Loading news...');
+    getStockNewsArticle(symbol)
+      .then(data => setStockNews(data))
+      .catch(err => showToast(toastMessage(err)))
+      .finally(() => setStockNewsLoading(''));
+
+    setStockFundamentalsLoading('Loading fundamentals...');
+    getStockFundamentalsData(symbol, stateExchange)
+      .then(data => setStockFundamentals(data))
+      .catch(err => showToast(toastMessage(err)))
+      .finally(() => setStockFundamentalsLoading(''));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [symbol]);
-
-  const loadStockData = async () => {
-    const s = symbol || '';
-
-    (async () => {
-      setStockDetailLoading('Loading stock details...');
-      try {
-        setStockDetail(await getStockDetail(s, indicators, stateExchange));
-      } catch (err) {
-        showToast(toastMessage(err));
-      } finally {
-        setStockDetailLoading('');
-      }
-    })();
-
-    (async () => {
-      setStockNewsLoading('Loading news...');
-      try {
-        setStockNews(await getStockNewsArticle(s));
-      } catch (err) {
-        showToast(toastMessage(err));
-      } finally {
-        setStockNewsLoading('');
-      }
-    })();
-
-    (async () => {
-      setStockFundamentalsLoading('Loading fundamentals...');
-      try {
-        setStockFundamentals(await getStockFundamentalsData(s, stateExchange));
-      } catch (err) {
-        showToast(toastMessage(err));
-      } finally {
-        setStockFundamentalsLoading('');
-      }
-    })();
-  };
 
   // ── cleanup helper ──────────────────────────────────────────────────
   const cleanupCharts = () => {

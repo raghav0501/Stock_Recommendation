@@ -32,21 +32,11 @@ export function Header() {
   ];
 
   useEffect(() => {
-    loadData();
-    // const interval = setInterval(loadData, 30000); // Refresh every 30s
-    // return () => clearInterval(interval);
+    Promise.all([getMarketIndices(), getMarketStatus()])
+      .then(([indices, status]) => setMarketData({ indices, status }))
+      .catch(err => showToast(toastMessage(err)))
+      .finally(() => setIsMarketLoading(false));
   }, []);
-
-  const loadData = async () => {
-    try {
-      const [indices, status] = await Promise.all([getMarketIndices(), getMarketStatus()]);
-      setMarketData({ indices, status });
-    } catch (err) {
-      showToast(toastMessage(err));
-    } finally {
-      setIsMarketLoading(false);
-    }
-  };
 
   const handleNavigation = (path: string) => {
     navigate(path);

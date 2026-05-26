@@ -26,27 +26,17 @@ export function StocksPage({ parameters, onParametersChange }: StocksPageProps) 
   const [hasChanges, setHasChanges] = useState(false);
 
   useEffect(() => {
-    loadStocks();
+    setLoading(true);
+    getFilteredStocks(parameters)
+      .then(data => setStocks(data))
+      .catch(err => showToast(toastMessage(err)))
+      .finally(() => setLoading(false));
   }, [parameters]);
 
   useEffect(() => {
-    // Reset temp parameters when actual parameters change
     setTempParameters(parameters);
     setHasChanges(false);
   }, [parameters]);
-
-  const loadStocks = async () => {
-    setLoading(true);
-    try {
-      await new Promise(resolve => setTimeout(resolve, 5000));
-      const data = await getFilteredStocks(parameters);
-      setStocks(data);
-    } catch (err) {
-      showToast(toastMessage(err));
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const toggleTempParameter = (paramId: string) => {
     const newParams = tempParameters.includes(paramId)
