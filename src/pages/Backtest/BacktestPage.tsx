@@ -17,6 +17,7 @@ import { getBaseChartOptions, getCandlestickOptions } from '../../config/chartCo
 import { createOscillatorPane, syncTimeScales, syncCrosshairs } from '../../utils/chartUtils';
 import stockUniverse from '../../data/Stock_universe.json';
 import { runBacktest, type BacktestResult, type PlotSignalPoint } from '../../api/backtestApi';
+import { toastMessage } from '../../utils/errorMessage';
 
 // ── Types ──────────────────────────────────────────────────────────
 interface StockEntry {
@@ -423,8 +424,8 @@ export function BacktestPage() {
       });
       setResult(res);
       setStep(4);
-    } catch {
-      setError('Failed to run backtest. Please try again.');
+    } catch (err) {
+      setError(toastMessage(err));
     } finally {
       setIsLoading(false);
     }

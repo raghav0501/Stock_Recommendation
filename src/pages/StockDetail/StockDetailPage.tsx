@@ -44,6 +44,8 @@ import {
 } from '../../config/parameters';
 import { Loader } from '../../components/Loader';
 import Markdown from 'markdown-to-jsx';
+import { useToast } from '../../components/Toast';
+import { toastMessage } from '../../utils/errorMessage';
 
 interface StockDetailPageProps {
   indicators: string[];
@@ -52,6 +54,7 @@ interface StockDetailPageProps {
 export function StockDetailPage({ indicators }: StockDetailPageProps) {
   const { symbol } = useParams<{ symbol: string }>();
   const navigate = useNavigate();
+  const { showToast } = useToast();
   const location = useLocation();
   const { theme } = useTheme();
 
@@ -110,42 +113,27 @@ export function StockDetailPage({ indicators }: StockDetailPageProps) {
 
   // ── data loading ────────────────────────────────────────────────────
   useEffect(() => {
-    if (symbol) loadStockData();
+    if (!symbol) return;
+
+    setStockDetailLoading('Loading stock details...');
+    getStockDetail(symbol, indicators, stateExchange)
+      .then(data => setStockDetail(data))
+      .catch(err => showToast(toastMessage(err)))
+      .finally(() => setStockDetailLoading(''));
+
+    setStockNewsLoading('Loading news...');
+    getStockNewsArticle(symbol)
+      .then(data => setStockNews(data))
+      .catch(err => showToast(toastMessage(err)))
+      .finally(() => setStockNewsLoading(''));
+
+    setStockFundamentalsLoading('Loading fundamentals...');
+    getStockFundamentalsData(symbol, stateExchange)
+      .then(data => setStockFundamentals(data))
+      .catch(err => showToast(toastMessage(err)))
+      .finally(() => setStockFundamentalsLoading(''));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [symbol]);
-
-  const loadStockData = async () => {
-    const s = symbol || '';
-
-    (async () => {
-      setStockDetailLoading('Loading stock details...');
-      try {
-        setStockDetail(await getStockDetail(s, indicators, stateExchange));
-        setStockDetailLoading('');
-      } catch {
-        setStockDetailLoading('Failed to load stock details.');
-      }
-    })();
-
-    (async () => {
-      setStockNewsLoading('Loading news...');
-      try {
-        setStockNews(await getStockNewsArticle(s));
-        setStockNewsLoading('');
-      } catch {
-        setStockNewsLoading('Failed to load news.');
-      }
-    })();
-
-    (async () => {
-      setStockFundamentalsLoading('Loading fundamentals...');
-      try {
-        setStockFundamentals(await getStockFundamentalsData(s, stateExchange));
-        setStockFundamentalsLoading('');
-      } catch {
-        setStockFundamentalsLoading('Failed to load fundamentals.');
-      }
-    })();
-  };
 
   // ── cleanup helper ──────────────────────────────────────────────────
   const cleanupCharts = () => {

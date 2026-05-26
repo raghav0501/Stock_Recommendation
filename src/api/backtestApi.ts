@@ -1,3 +1,5 @@
+import { ApiError } from '../utils/apiError';
+
 const BACKTEST_API_BASE = import.meta.env.VITE_MIDDLEWARE_URL || 'http://localhost:3000';
 // const BACKTEST_API_BASE = 'http://localhost:3000';
 
@@ -46,16 +48,24 @@ export async function runBacktest(params: BacktestRequest): Promise<BacktestResu
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
   if (token) headers['Authorization'] = `Bearer ${token}`;
 
-  const res = await fetch(`${BACKTEST_API_BASE}/api/backtest/signalcount`, {
-    method: 'POST',
-    headers,
-    body: JSON.stringify(params),
-  });
+  let res: Response;
+  try {
+    res = await fetch(`${BACKTEST_API_BASE}/api/backtest/signalcount`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(params),
+    });
+  } catch {
+    throw new ApiError('network', null, 'No internet connection');
+  }
 
-  if (!res.ok) throw new Error(`Backtest API error: ${res.status}`);
+  if (!res.ok) {
+    const type = res.status === 403 ? 'forbidden' : res.status >= 500 ? 'server' : 'client';
+    throw new ApiError(type, res.status, `Backtest API error: ${res.status}`);
+  }
 
   const json = await res.json();
-  if (json.status !== 'success') throw new Error('Backtest API returned failure status');
+  if (json.status !== 'success') throw new ApiError('client', res.status, 'Backtest API returned failure status');
 
   return json.data as BacktestResult;
 }

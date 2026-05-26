@@ -7,6 +7,7 @@ import { Loader } from '../../components/Loader';
 import { StockSearchModal } from '../../components/StockSearchModal';
 import { getHoldings, addHolding, removeHolding, stripSuffix } from '../../api/portfolioApi';
 import { useToast } from '../../components/Toast';
+import { toastMessage } from '../../utils/errorMessage';
 import type { PortfolioHolding } from '../../models/Portfolio';
 
 function formatDate(iso?: string): string {
@@ -27,8 +28,9 @@ export function PortfolioPage() {
 
   useEffect(() => {
     getHoldings()
-      .then(data => { setHoldings(data); setLoading(false); })
-      .catch(() => { setLoadError(true); setLoading(false); });
+      .then(data => setHoldings(data))
+      .catch(err => { setLoadError(true); showToast(toastMessage(err)); })
+      .finally(() => setLoading(false));
   }, []);
 
   const handleAdd = async (stock: PortfolioHolding) => {

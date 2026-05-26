@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { Settings } from 'lucide-react';
 import type { StockSummary } from '../../models/Stock';
 import { getFilteredStocks } from '../../api/stockApi';
+import { useToast } from '../../components/Toast';
+import { toastMessage } from '../../utils/errorMessage';
 import { TECHNICAL_PARAMETERS } from '../../config/parameters';
 import { Button } from '../../components/Button';
 import { SimpleView } from './components/SimpleView';
@@ -15,6 +17,7 @@ interface StocksPageProps {
 // type ViewMode = 'simple' | 'advanced';
 
 export function StocksPage({ parameters, onParametersChange }: StocksPageProps) {
+  const { showToast } = useToast();
   const [stocks, setStocks] = useState<StockSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const viewMode = 'simple';
@@ -23,27 +26,17 @@ export function StocksPage({ parameters, onParametersChange }: StocksPageProps) 
   const [hasChanges, setHasChanges] = useState(false);
 
   useEffect(() => {
-    loadStocks();
+    setLoading(true);
+    getFilteredStocks(parameters)
+      .then(data => setStocks(data))
+      .catch(err => showToast(toastMessage(err)))
+      .finally(() => setLoading(false));
   }, [parameters]);
 
   useEffect(() => {
-    // Reset temp parameters when actual parameters change
     setTempParameters(parameters);
     setHasChanges(false);
   }, [parameters]);
-
-  const loadStocks = async () => {
-    setLoading(true);
-    try {
-      await new Promise(resolve => setTimeout(resolve, 5000));
-      const data = await getFilteredStocks(parameters);
-      setStocks(data);
-    } catch (error) {
-      console.error('Failed to load stocks:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const toggleTempParameter = (paramId: string) => {
     const newParams = tempParameters.includes(paramId)

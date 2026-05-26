@@ -33,7 +33,9 @@ export function stripSuffix(symbol: string): string {
 export async function getHoldings(): Promise<PortfolioHolding[]> {
   const exchange = localStorage.getItem('selectedExchange') || 'india';
   const response = await getPortfolio(exchange);
-  if (response.status !== 'success' || !response.data?.watchlist) return [];
+  if (response.status !== 'success' || !response.data?.watchlist) {
+    throw new Error('Failed to load portfolio');
+  }
   return response.data.watchlist.map(mapItem);
 }
 
