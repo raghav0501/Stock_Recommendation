@@ -23,9 +23,9 @@ export function Header() {
   const isActive = (path: string) => location.pathname === path || location.pathname.startsWith(path + '/');
 
   const navItems = [
+    { path: '/alerts', label: 'Alerts', icon: <Bell className="w-4 h-4" /> },
     { path: '/technical-indicators', label: 'Indicators', icon: <Activity className="w-4 h-4" /> },
     { path: '/stocks', label: 'Stocks', icon: <TrendingUp className="w-4 h-4" /> },
-    { path: '/alerts', label: 'Active Alerts', icon: <Bell className="w-4 h-4" /> },
   ];
 
   useEffect(() => {

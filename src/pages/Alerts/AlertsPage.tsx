@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Bell, RefreshCw, ExternalLink, Zap, Search, X } from 'lucide-react';
+import { Bell, RefreshCw, ExternalLink, Zap, Search, X, SlidersHorizontal, Briefcase } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Card } from '../../components/Card';
 import { Loader } from '../../components/Loader';
@@ -106,7 +106,7 @@ export function AlertsPage() {
           </div>
           <div>
             <h1 className="text-2xl font-bold text-light-text-primary dark:text-dark-text-primary">
-              Active Alerts
+              Alerts
             </h1>
             <p className="text-sm text-light-text-tertiary dark:text-dark-text-tertiary">
               {alerts.length} {alerts.length === 1 ? 'stock' : 'stocks'} with active alerts
@@ -137,7 +137,7 @@ export function AlertsPage() {
             </div>
             <div>
               <p className="text-sm font-medium text-light-text-primary dark:text-dark-text-primary">
-                All clear — no alerts today
+                No alerts today
               </p>
               <p className="text-xs text-light-text-tertiary dark:text-dark-text-tertiary">
                 None of your tracked stocks have triggered an alert.
@@ -164,6 +164,41 @@ export function AlertsPage() {
           </div>
         )}
       </Card>
+
+      {/* ── Empty-state navigation ───────────────────────────────── */}
+      {!loading && !alertsLoading && alerts.length === 0 && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <button
+            onClick={() => navigate('/technical-indicators')}
+            className="text-left p-5 rounded-xl border border-light-border-primary dark:border-dark-border-primary bg-light-bg-elevated dark:bg-dark-bg-elevated hover:border-light-accent-primary dark:hover:border-dark-accent-primary hover:bg-light-accent-primary/5 dark:hover:bg-dark-accent-primary/5 transition-all group"
+          >
+            <div className="p-2.5 rounded-lg bg-light-accent-primary/10 dark:bg-dark-accent-primary/10 w-fit mb-3 group-hover:bg-light-accent-primary/20 dark:group-hover:bg-dark-accent-primary/20 transition-colors">
+              <SlidersHorizontal className="w-5 h-5 text-light-accent-primary dark:text-dark-accent-primary" />
+            </div>
+            <p className="font-semibold text-sm text-light-text-primary dark:text-dark-text-primary mb-1">
+              Stock Screener
+            </p>
+            <p className="text-xs text-light-text-tertiary dark:text-dark-text-tertiary leading-relaxed">
+              Run the technical indicators screener to find opportunities across the market.
+            </p>
+          </button>
+
+          <button
+            onClick={() => navigate('/portfolio')}
+            className="text-left p-5 rounded-xl border border-light-border-primary dark:border-dark-border-primary bg-light-bg-elevated dark:bg-dark-bg-elevated hover:border-light-accent-primary dark:hover:border-dark-accent-primary hover:bg-light-accent-primary/5 dark:hover:bg-dark-accent-primary/5 transition-all group"
+          >
+            <div className="p-2.5 rounded-lg bg-light-accent-primary/10 dark:bg-dark-accent-primary/10 w-fit mb-3 group-hover:bg-light-accent-primary/20 dark:group-hover:bg-dark-accent-primary/20 transition-colors">
+              <Briefcase className="w-5 h-5 text-light-accent-primary dark:text-dark-accent-primary" />
+            </div>
+            <p className="font-semibold text-sm text-light-text-primary dark:text-dark-text-primary mb-1">
+              My Portfolio
+            </p>
+            <p className="text-xs text-light-text-tertiary dark:text-dark-text-tertiary leading-relaxed">
+              Add stocks to your portfolio to start tracking alerts for your holdings.
+            </p>
+          </button>
+        </div>
+      )}
 
       {/* ── Search + filter ──────────────────────────────────────── */}
       {!alertsLoading && alerts.length > 0 && (

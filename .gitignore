@@ -143,3 +143,5 @@ package-lock.json
 .firebaserc
 firebase.json
 deploy.bat
+
+CODE_AUDIT.md
