@@ -788,9 +788,9 @@ export function BacktestPage() {
                     <button
                       key={s.symbol}
                       onMouseDown={() => handleSelectStock(s)}
-                      className="w-full flex items-center gap-3 px-4 py-3 hover:bg-light-bg-tertiary dark:hover:bg-dark-bg-tertiary text-left transition-colors"
+                      className="w-full flex flex-row items-center gap-3 px-4 py-3 hover:bg-light-bg-tertiary dark:hover:bg-dark-bg-tertiary text-left transition-colors"
                     >
-                      <span className="font-semibold text-light-text-primary dark:text-dark-text-primary w-24 shrink-0">
+                      <span className="font-semibold text-light-text-primary dark:text-dark-text-primary min-w-24 shrink-0">
                         {s.symbol}
                       </span>
                       <span className="text-sm text-light-text-secondary dark:text-dark-text-secondary truncate">

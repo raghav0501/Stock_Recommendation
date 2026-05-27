@@ -19,8 +19,8 @@ export function TechnicalIndicatorsPage({
   const navigate = useNavigate();
 
   // Separate MCap filters from regular indicators
-  const mcapFilters = technicalParameters.filter(p => p.id.startsWith('mcap_'));
-  const regularIndicators = technicalParameters.filter(p => !p.id.startsWith('mcap_'));
+  const mcapFilters = technicalParameters.filter(p => p.category === 'Strategy');
+  const regularIndicators = technicalParameters.filter(p => !(p.category === 'Strategy'));
 
   const toggleParameter = (id: string) => {
     if (selectedParameters.includes(id)) {

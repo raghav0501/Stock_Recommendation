@@ -33,7 +33,7 @@
       },
       {
         "id": "rsi_14",
-        "name": "RSI (14)",
+        "name": "RSI",
         "description": "Relative Strength Index - measures speed and magnitude of price changes (0-100)",
         "category": "Momentum",
         "scale": "oscillator"

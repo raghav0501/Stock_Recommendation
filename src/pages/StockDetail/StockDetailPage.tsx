@@ -38,10 +38,7 @@ import {
   buildIndicatorValueMap,
   getPrimarySeriesKey,
 } from '../../utils/chartUtils';
-import {
-  TECHNICAL_PARAMETERS,
-  getChartableIndicators,
-} from '../../config/parameters';
+import type { TechnicalParameter } from '../../models/Market';
 import { Loader } from '../../components/Loader';
 import Markdown from 'markdown-to-jsx';
 import { useToast } from '../../components/Toast';
@@ -49,9 +46,10 @@ import { toastMessage } from '../../utils/errorMessage';
 
 interface StockDetailPageProps {
   indicators: string[];
+  parameters: TechnicalParameter[];
 }
 
-export function StockDetailPage({ indicators }: StockDetailPageProps) {
+export function StockDetailPage({ indicators, parameters }: StockDetailPageProps) {
   const { symbol } = useParams<{ symbol: string }>();
   const navigate = useNavigate();
   const { showToast } = useToast();
@@ -99,7 +97,7 @@ export function StockDetailPage({ indicators }: StockDetailPageProps) {
     ? stockNews?.news
     : stockNews?.news.slice(0, 9);
 
-  const chartableIndicators = getChartableIndicators();
+  const chartableIndicators = parameters.filter(p => p.chartable);
   const sortedIndicators = [
     ...chartableIndicators.filter((p) => indicators.includes(p.id)),
     ...chartableIndicators.filter((p) => !indicators.includes(p.id)),
@@ -107,7 +105,7 @@ export function StockDetailPage({ indicators }: StockDetailPageProps) {
 
   // ★ derived: does current selection include any oscillator?
   const hasOscillator = Array.from(selectedIndicators).some((id) => {
-    const p = TECHNICAL_PARAMETERS.find((x) => x.id === id);
+    const p = parameters.find((x) => x.id === id);
     return p?.scale === 'oscillator';
   });
 
@@ -171,7 +169,7 @@ export function StockDetailPage({ indicators }: StockDetailPageProps) {
     const priceIds: string[] = [];
     const oscIds: string[] = [];
     selectedIndicators.forEach((id) => {
-      const p = TECHNICAL_PARAMETERS.find((x) => x.id === id);
+      const p = parameters.find((x) => x.id === id);
       if (!p?.chartable) return;
       if (p.scale === 'price') priceIds.push(id);
       else if (p.scale === 'oscillator') oscIds.push(id);
@@ -242,7 +240,7 @@ export function StockDetailPage({ indicators }: StockDetailPageProps) {
       ) {
         addStochasticIndicator(mainChart, stockDataWithTechnicals, seriesRef.current);
       } else {
-        const param = TECHNICAL_PARAMETERS.find((x) => x.id === id);
+        const param = parameters.find((x) => x.id === id);
         addIndicatorLine(
           mainChart,
           id,
@@ -271,7 +269,7 @@ export function StockDetailPage({ indicators }: StockDetailPageProps) {
 
       // Add oscillator series
       oscIds.forEach((id) => {
-        const param = TECHNICAL_PARAMETERS.find((x) => x.id === id);
+        const param = parameters.find((x) => x.id === id);
         if (!param) return;
         const opts = {
           color: getIndicatorColor(id),
@@ -432,7 +430,7 @@ export function StockDetailPage({ indicators }: StockDetailPageProps) {
   const changeInfo = formatChange(priceChange, priceChangePercent);
 
   const selectedChartableNames = indicators
-    .map((id) => TECHNICAL_PARAMETERS.find((p) => p.id === id && p.chartable))
+    .map((id) => parameters.find((p) => p.id === id && p.chartable))
     .filter(Boolean)
     .map((p) => p!.name);
 

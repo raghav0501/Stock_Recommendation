@@ -109,7 +109,7 @@ export function AlertsPage() {
               Alerts
             </h1>
             <p className="text-sm text-light-text-tertiary dark:text-dark-text-tertiary">
-              {alerts.length} {alerts.length === 1 ? 'stock' : 'stocks'} with active alerts
+              {alerts.length} {alerts.length === 1 ? 'stock' : 'stocks'} from your portfolio with active alerts
             </p>
           </div>
         </div>
@@ -152,8 +152,11 @@ export function AlertsPage() {
             </div>
             <div>
               <p className="text-sm font-medium text-light-text-primary dark:text-dark-text-primary">
-                {alerts.length} {alerts.length === 1 ? 'stock' : 'stocks'} with{' '}
+                {alerts.length} {alerts.length === 1 ? 'stock' : 'stocks'} from your portfolio with{' '}
                 {totalFlags} active {totalFlags === 1 ? 'alert' : 'alerts'}
+              </p>
+              <p className="text-xs text-light-text-tertiary dark:text-dark-text-tertiary">
+                Alerts are generated from your tracked portfolio stocks only.
               </p>
               {lastRefreshed && (
                 <p className="text-xs text-light-text-tertiary dark:text-dark-text-tertiary">

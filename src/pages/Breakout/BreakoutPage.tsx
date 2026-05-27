@@ -62,12 +62,14 @@ export function EarlyAlertPage() {
     });
   };
 
-  const visibleStocks = stocks.filter(stock => {
-    if (activeFilters.has('earlyAlertBB') && stock.bbSignal === 0) return false;
-    if (activeFilters.has('earlyAlertRSI') && stock.rsiSignal === 0) return false;
-    if (activeFilters.has('mcapTop100') && !stock.mcapTop100) return false;
-    return true;
-  });
+  const visibleStocks = stocks
+    .filter(stock => {
+      if (activeFilters.has('earlyAlertBB') && stock.bbSignal === 0) return false;
+      if (activeFilters.has('earlyAlertRSI') && stock.rsiSignal === 0) return false;
+      if (activeFilters.has('mcapTop100') && !stock.mcapTop100) return false;
+      return true;
+    })
+    .sort((a, b) => a.symbol.localeCompare(b.symbol));
 
   if (loading) {
     return (
