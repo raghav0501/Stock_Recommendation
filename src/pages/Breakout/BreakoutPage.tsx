@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Zap, TrendingUp, ExternalLink, TrendingDown } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Card } from '../../components/Card';
@@ -12,6 +12,7 @@ import { FilterChip } from '../../components/FilterChip';
 import { EmptyState } from '../../components/EmptyState';
 import { useToast } from '../../components/Toast';
 import { toastMessage } from '../../utils/errorMessage';
+import { useAsyncData } from '../../hooks/useAsyncData';
 
 const ALL_FILTERS: EarlyAlertFilter[] = ['earlyAlertBB', 'earlyAlertRSI', 'mcapTop100'];
 
@@ -36,25 +37,23 @@ export function EarlyAlertPage() {
   const location = useLocation();
   const { showToast } = useToast();
   const incomingSymbol = (location.state as { symbol?: string } | null)?.symbol;
-  const [stocks, setStocks] = useState<EarlyAlertStock[]>([]);
-  const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<EarlyAlertStock | null>(null);
   const [activeFilters, setActiveFilters] = useState<Set<EarlyAlertFilter>>(new Set());
 
-  useEffect(() => {
-    getEarlyAlertStocks()
-      .then(data => {
-        setStocks(data);
+  const { data: stocks, loading } = useAsyncData<EarlyAlertStock[]>(
+    getEarlyAlertStocks,
+    [],
+    [],
+    {
+      onError: err => showToast(toastMessage(err)),
+      onSuccess: data => {
         const preSelected = incomingSymbol
           ? (data.find(s => s.symbol === incomingSymbol) ?? data[0] ?? null)
           : (data[0] ?? null);
         setSelected(preSelected);
-      })
-      .catch(err => showToast(toastMessage(err)))
-      .finally(() => setLoading(false));
-  // incomingSymbol intentionally excluded — run once on mount
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+      },
+    }
+  );
 
   const toggleFilter = (key: EarlyAlertFilter) => {
     setActiveFilters(prev => {

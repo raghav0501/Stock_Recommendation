@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { useAsyncData } from '../../hooks/useAsyncData';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { ArrowLeft, ChevronDown, ChevronUp } from 'lucide-react';
 import {
@@ -43,7 +44,7 @@ import { Loader } from '../../components/Loader';
 import Markdown from 'markdown-to-jsx';
 import { useToast } from '../../components/Toast';
 import { toastMessage } from '../../utils/errorMessage';
-import { getIndicators } from '../../api/backendService';
+import { getIndicators, type Indicators } from '../../api/backendService';
 
 interface StockDetailPageProps {
   indicators: string[];
@@ -92,7 +93,26 @@ export function StockDetailPage({ indicators }: StockDetailPageProps) {
     new Set(indicators)
   );
   const [showAllNews, setShowAllNews] = useState(false);
-  const [chartableIndicators, setChartableIndicators] = useState<TechnicalParameter[]>([]);
+
+  const { data: rawIndicators } = useAsyncData<Indicators[]>(
+    getIndicators,
+    [],
+    [],
+    { onError: err => showToast(toastMessage(err)) }
+  );
+  const chartableIndicators = useMemo<TechnicalParameter[]>(
+    () => rawIndicators
+      .filter(ind => ind.category.toLowerCase() !== 'strategy')
+      .map(ind => ({
+        id: ind.id,
+        name: ind.name,
+        description: ind.description,
+        category: ind.category as TechnicalParameter['category'],
+        scale: ind.scale as TechnicalParameter['scale'],
+        chartable: ind.scale !== 'none',
+      })),
+    [rawIndicators]
+  );
 
   const displayedNews = showAllNews
     ? stockNews?.news
@@ -113,21 +133,6 @@ export function StockDetailPage({ indicators }: StockDetailPageProps) {
   // ── data loading ────────────────────────────────────────────────────
   useEffect(() => {
     if (!symbol) return;
-
-    getIndicators()
-      .then(data => setChartableIndicators(
-        data
-          .filter(ind => ind.category.toLowerCase() !== 'strategy')
-          .map(ind => ({
-            id: ind.id,
-            name: ind.name,
-            description: ind.description,
-            category: ind.category as TechnicalParameter['category'],
-            scale: ind.scale as TechnicalParameter['scale'],
-            chartable: ind.scale !== 'none',
-          }))
-      ))
-      .catch(err => showToast(toastMessage(err)));
 
     setStockDetailLoading('Loading stock details...');
     getStockDetail(symbol, indicators, stateExchange)

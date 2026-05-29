@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
+import { useAsyncData } from '../hooks/useAsyncData';
 import { Activity, TrendingUp, Briefcase, Bell, Sun, Moon, Menu, X, LogOut, Settings, User, UserCircle, BookMarked, FlaskConical, Zap } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useTheme } from '../config/ThemeContext';
@@ -16,11 +17,13 @@ export function Header() {
   const navigate = useNavigate();
   const location = useLocation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [marketData, setMarketData] = useState<{ indices: MarketIndex[]; status: MarketStatus | null }>({
-    indices: [],
-    status: null,
-  });
-  const [isMarketLoading, setIsMarketLoading] = useState(true);
+  const { data: marketData, loading: isMarketLoading } = useAsyncData(
+    () => Promise.all([getMarketIndices(), getMarketStatus()])
+          .then(([indices, status]) => ({ indices, status })),
+    { indices: [] as MarketIndex[], status: null as MarketStatus | null },
+    [],
+    { onError: err => showToast(toastMessage(err)) }
+  );
 
   const isActive = (path: string) => location.pathname === path || location.pathname.startsWith(path + '/');
 
@@ -37,12 +40,6 @@ export function Header() {
     { path: '/backtest',    label: 'Backtest',     icon: <FlaskConical className="w-4 h-4" /> },
   ];
 
-  useEffect(() => {
-    Promise.all([getMarketIndices(), getMarketStatus()])
-      .then(([indices, status]) => setMarketData({ indices, status }))
-      .catch(err => showToast(toastMessage(err)))
-      .finally(() => setIsMarketLoading(false));
-  }, []);
 
   const handleNavigation = (path: string) => {
     navigate(path);

@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
+import { useAsyncData } from '../../hooks/useAsyncData';
 import { Bell, RefreshCw, ExternalLink, Zap, Search, X, SlidersHorizontal, Briefcase } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Card } from '../../components/Card';
@@ -37,12 +38,20 @@ const EARLY_ALERT_KEYS: (keyof AlertFlags)[] = ['earlyAlertBB', 'earlyAlertRSI']
 export function AlertsPage() {
   const navigate = useNavigate();
   const { showToast } = useToast();
-  const [alerts, setAlerts] = useState<PortfolioAlert[]>([]);
-  const [loading, setLoading] = useState(true);
   const [alertsLoading, setAlertsLoading] = useState(false);
   const [lastRefreshed, setLastRefreshed] = useState<Date | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilters, setActiveFilters] = useState<Set<keyof AlertFlags>>(new Set());
+
+  const { data: alerts, setData: setAlerts, loading } = useAsyncData<PortfolioAlert[]>(
+    getAlerts,
+    [],
+    [],
+    {
+      onError: () => showToast('Failed to load alerts.'),
+      onSuccess: () => setLastRefreshed(new Date()),
+    }
+  );
 
   const refreshAlerts = useCallback(async () => {
     setAlertsLoading(true);
@@ -55,14 +64,7 @@ export function AlertsPage() {
     } finally {
       setAlertsLoading(false);
     }
-  }, [showToast]);
-
-  useEffect(() => {
-    getAlerts()
-      .then(data => { setAlerts(data); setLastRefreshed(new Date()); })
-      .catch(() => showToast('Failed to load alerts.'))
-      .finally(() => setLoading(false));
-  }, [showToast]);
+  }, [showToast, setAlerts]);
 
   const toggleFilter = (key: keyof AlertFlags) => {
     setActiveFilters(prev => {

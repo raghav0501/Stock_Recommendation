@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
+import { useAsyncData } from '../../hooks/useAsyncData';
 import { Plus, Trash2, Briefcase, AlertCircle } from 'lucide-react';
 import { EmptyState } from '../../components/EmptyState';
 import { useNavigate } from 'react-router-dom';
@@ -19,20 +20,19 @@ function formatDate(iso?: string): string {
 export function PortfolioPage() {
   const navigate = useNavigate();
   const { showToast } = useToast();
-  const [holdings, setHoldings] = useState<PortfolioHolding[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [loadError, setLoadError] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [confirmSymbol, setConfirmSymbol] = useState<string | null>(null);
 
   const selectedExchange = localStorage.getItem('selectedExchange') || 'india';
 
-  useEffect(() => {
-    getHoldings()
-      .then(data => setHoldings(data))
-      .catch(err => { setLoadError(true); showToast(toastMessage(err)); })
-      .finally(() => setLoading(false));
-  }, []);
+  const {
+    data: holdings,
+    setData: setHoldings,
+    loading,
+    error: loadError,
+  } = useAsyncData<PortfolioHolding[]>(getHoldings, [], [], {
+    onError: err => showToast(toastMessage(err)),
+  });
 
   const handleAdd = async (stock: PortfolioHolding) => {
     if (holdings.some(h => h.symbol === stock.symbol)) return;

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useAsyncData } from '../../hooks/useAsyncData';
 import { Settings } from 'lucide-react';
 import type { StockSummary } from '../../models/Stock';
 import type { TechnicalParameter } from '../../models/Market';
@@ -19,20 +20,17 @@ interface StocksPageProps {
 
 export function StocksPage({ parameters, allParameters, onParametersChange }: StocksPageProps) {
   const { showToast } = useToast();
-  const [stocks, setStocks] = useState<StockSummary[]>([]);
-  const [loading, setLoading] = useState(true);
   const viewMode = 'simple';
   const [showParameterDropdown, setShowParameterDropdown] = useState(false);
   const [tempParameters, setTempParameters] = useState<string[]>(parameters);
   const [hasChanges, setHasChanges] = useState(false);
 
-  useEffect(() => {
-    setLoading(true);
-    getFilteredStocks(parameters)
-      .then(data => setStocks(data))
-      .catch(err => showToast(toastMessage(err)))
-      .finally(() => setLoading(false));
-  }, [parameters]);
+  const { data: stocks, loading } = useAsyncData<StockSummary[]>(
+    () => getFilteredStocks(parameters),
+    [],
+    [parameters],
+    { onError: err => showToast(toastMessage(err)) }
+  );
 
   useEffect(() => {
     setTempParameters(parameters);
