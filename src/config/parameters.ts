@@ -11,7 +11,7 @@ export const TECHNICAL_PARAMETERS: TechnicalParameter[] = [
   },
   { 
     id: 'rsi_14', 
-    name: 'RSI (14)', 
+    name: 'RSI',
     category: 'Momentum', 
     description: 'Relative Strength Index - measures speed and magnitude of price changes (0-100)',
     chartable: true,

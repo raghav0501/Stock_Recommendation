@@ -38,14 +38,12 @@ import {
   buildIndicatorValueMap,
   getPrimarySeriesKey,
 } from '../../utils/chartUtils';
-import {
-  TECHNICAL_PARAMETERS,
-  getChartableIndicators,
-} from '../../config/parameters';
+import type { TechnicalParameter } from '../../models/Market';
 import { Loader } from '../../components/Loader';
 import Markdown from 'markdown-to-jsx';
 import { useToast } from '../../components/Toast';
 import { toastMessage } from '../../utils/errorMessage';
+import { getIndicators } from '../../api/backendService';
 
 interface StockDetailPageProps {
   indicators: string[];
@@ -94,12 +92,13 @@ export function StockDetailPage({ indicators }: StockDetailPageProps) {
     new Set(indicators)
   );
   const [showAllNews, setShowAllNews] = useState(false);
+  const [chartableIndicators, setChartableIndicators] = useState<TechnicalParameter[]>([]);
 
   const displayedNews = showAllNews
     ? stockNews?.news
     : stockNews?.news.slice(0, 9);
 
-  const chartableIndicators = getChartableIndicators();
+  // const chartableIndicators = parameters.filter(p => p.chartable);
   const sortedIndicators = [
     ...chartableIndicators.filter((p) => indicators.includes(p.id)),
     ...chartableIndicators.filter((p) => !indicators.includes(p.id)),
@@ -107,13 +106,28 @@ export function StockDetailPage({ indicators }: StockDetailPageProps) {
 
   // ★ derived: does current selection include any oscillator?
   const hasOscillator = Array.from(selectedIndicators).some((id) => {
-    const p = TECHNICAL_PARAMETERS.find((x) => x.id === id);
-    return p?.scale === 'oscillator';
+    const p = chartableIndicators.find((x) => x.id === id);
+    return p?.scale === 'oscillator' || p?.scale === 'volume';
   });
 
   // ── data loading ────────────────────────────────────────────────────
   useEffect(() => {
     if (!symbol) return;
+
+    getIndicators()
+      .then(data => setChartableIndicators(
+        data
+          .filter(ind => ind.category.toLowerCase() !== 'strategy')
+          .map(ind => ({
+            id: ind.id,
+            name: ind.name,
+            description: ind.description,
+            category: ind.category as TechnicalParameter['category'],
+            scale: ind.scale as TechnicalParameter['scale'],
+            chartable: ind.scale !== 'none',
+          }))
+      ))
+      .catch(err => showToast(toastMessage(err)));
 
     setStockDetailLoading('Loading stock details...');
     getStockDetail(symbol, indicators, stateExchange)
@@ -159,55 +173,27 @@ export function StockDetailPage({ indicators }: StockDetailPageProps) {
   };
 
   // ══════════════════════════════════════════════════════════════════════
-  // MAIN CHART EFFECT
+  // EFFECT 1 — CHART STRUCTURE (stock/theme change only)
+  // Builds the main chart + candlestick. Does NOT touch indicators.
   // ══════════════════════════════════════════════════════════════════════
   useEffect(() => {
     if (!mainChartContainerRef.current || !stockDetail) return;
     cleanupCharts();
 
     const chartWidth = mainChartContainerRef.current.clientWidth;
-
-    // ── separate selected indicators by scale ──────────────────────────
-    const priceIds: string[] = [];
-    const oscIds: string[] = [];
-    selectedIndicators.forEach((id) => {
-      const p = TECHNICAL_PARAMETERS.find((x) => x.id === id);
-      if (!p?.chartable) return;
-      if (p.scale === 'price') priceIds.push(id);
-      else if (p.scale === 'oscillator') oscIds.push(id);
-    });
-    const needOscPane = oscIds.length > 0;
-
-    // ── create MAIN price chart ────────────────────────────────────────
     const baseOpts = getBaseChartOptions(theme, chartWidth, 400);
     const mainChart = createChart(mainChartContainerRef.current, {
       ...baseOpts,
-      crosshair: {
-        mode: 0, // Normal
-        vertLine: {
-          labelVisible: !needOscPane, // ★ hide time label when osc pane exists
-        },
-      },
-      rightPriceScale: {
-        ...(baseOpts as any).rightPriceScale,
-        minimumWidth: 65, // ★ consistent width with osc chart
-      },
-      timeScale: {
-        ...(baseOpts as any).timeScale,
-        visible: !needOscPane, // ★ hide axis when osc pane takes over
-      },
+      crosshair: { mode: 0, vertLine: { labelVisible: true } },
+      rightPriceScale: { ...(baseOpts as any).rightPriceScale, minimumWidth: 65 },
+      timeScale: { ...(baseOpts as any).timeScale, visible: true },
     });
     mainChartRef.current = mainChart;
 
-    // Candlestick series
-    const candlestick = mainChart.addSeries(
-      CandlestickSeries,
-      getCandlestickOptions()
-    );
-    candlestickSeriesRef.current = candlestick; // ★ store ref
+    const candlestick = mainChart.addSeries(CandlestickSeries, getCandlestickOptions());
+    candlestickSeriesRef.current = candlestick;
 
     if (stockDetail.chartData?.length) {
-      // Filter out candles where any OHLC value is null — API can return nulls for illiquid stocks
       const validCandles = stockDetail.chartData.filter(
         (d) => d.open != null && d.high != null && d.low != null && d.close != null
       );
@@ -224,14 +210,74 @@ export function StockDetailPage({ indicators }: StockDetailPageProps) {
       }
     }
 
+    mainChart.timeScale().fitContent();
+
+    const handleResize = () => {
+      const w = mainChartContainerRef.current?.clientWidth;
+      if (!w) return;
+      try { mainChartRef.current?.applyOptions({ width: w }); } catch { /* */ }
+      try { oscillatorChartRef.current?.applyOptions({ width: w }); } catch { /* */ }
+    };
+    window.addEventListener('resize', handleResize);
+
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      cleanupCharts();
+    };
+  }, [stockDetail, theme]);
+
+  // ══════════════════════════════════════════════════════════════════════
+  // EFFECT 2 — INDICATOR LAYER (runs on toggle without rebuilding chart)
+  // Clears old indicator series and re-adds the current selection.
+  // Candlestick and pan/zoom state are preserved across toggles.
+  // ══════════════════════════════════════════════════════════════════════
+  useEffect(() => {
+    if (!mainChartRef.current || !stockDetail) return;
+
+    const mainChart = mainChartRef.current;
+
+    // ── tear down previous sync + oscillator ──────────────────────────
+    if (syncCleanupRef.current) {
+      syncCleanupRef.current();
+      syncCleanupRef.current = null;
+    }
+    if (oscillatorChartRef.current) {
+      try { oscillatorChartRef.current.remove(); } catch { /* */ }
+      oscillatorChartRef.current = null;
+    }
+
+    // ── remove previous indicator series from main chart ─────────────
+    // Series that were on the oscillator chart are already gone above;
+    // the try/catch silently skips them.
+    seriesRef.current.forEach((series) => {
+      try { mainChart.removeSeries(series); } catch { /* was on osc chart */ }
+    });
+    seriesRef.current.clear();
+
+    // ── route selected indicators by scale ───────────────────────────
+    const priceIds: string[] = [];
+    const oscIds: string[] = [];
+    selectedIndicators.forEach((id) => {
+      const p = chartableIndicators.find((x) => x.id === id);
+      if (!p?.chartable) return;
+      if (p.scale === 'price') priceIds.push(id);
+      else if (p.scale === 'oscillator' || p.scale === 'volume') oscIds.push(id);
+    });
+    const needOscPane = oscIds.length > 0;
+
+    // ── update main chart options to reflect oscillator presence ──────
+    mainChart.applyOptions({
+      crosshair: { mode: 0, vertLine: { labelVisible: !needOscPane } },
+      timeScale: { visible: !needOscPane },
+    });
+
     const stockDataWithTechnicals = {
       ohlcv: stockDetail.chartData,
       technicals: stockDetail.technicalIndicators || [],
     };
 
-    // ── price-scale overlay indicators ─────────────────────────────────
+    // ── price-scale overlay indicators ────────────────────────────────
     priceIds.forEach((id) => {
-      if (!mainChartRef.current) return;
       if (id === 'bbands_20') {
         addBollingerBands(mainChart, stockDataWithTechnicals, '#f59e0b', seriesRef.current);
       } else if (id === 'macd') {
@@ -242,7 +288,7 @@ export function StockDetailPage({ indicators }: StockDetailPageProps) {
       ) {
         addStochasticIndicator(mainChart, stockDataWithTechnicals, seriesRef.current);
       } else {
-        const param = TECHNICAL_PARAMETERS.find((x) => x.id === id);
+        const param = chartableIndicators.find((x) => x.id === id);
         addIndicatorLine(
           mainChart,
           id,
@@ -259,8 +305,9 @@ export function StockDetailPage({ indicators }: StockDetailPageProps) {
       }
     });
 
-    // ── oscillator pane ────────────────────────────────────────────────
+    // ── oscillator pane ───────────────────────────────────────────────
     if (needOscPane && oscillatorChartContainerRef.current) {
+      const chartWidth = mainChartContainerRef.current?.clientWidth ?? 800;
       const oscChart = createOscillatorPane(
         oscillatorChartContainerRef.current,
         theme,
@@ -269,9 +316,8 @@ export function StockDetailPage({ indicators }: StockDetailPageProps) {
       );
       oscillatorChartRef.current = oscChart;
 
-      // Add oscillator series
       oscIds.forEach((id) => {
-        const param = TECHNICAL_PARAMETERS.find((x) => x.id === id);
+        const param = chartableIndicators.find((x) => x.id === id);
         if (!param) return;
         const opts = {
           color: getIndicatorColor(id),
@@ -296,10 +342,8 @@ export function StockDetailPage({ indicators }: StockDetailPageProps) {
         }
       });
 
-      // ★★★ FIND FIRST OSCILLATOR SERIES FOR CROSSHAIR SYNC ★★★
       let firstOscSeries: ISeriesApi<any> | null = null;
       let firstOscIndicatorKey = '';
-
       for (const id of oscIds) {
         const seriesKey = getPrimarySeriesKey(id);
         const series = seriesRef.current.get(seriesKey);
@@ -310,62 +354,34 @@ export function StockDetailPage({ indicators }: StockDetailPageProps) {
         }
       }
 
-      // ★★★ WIRE UP ALL SYNC ★★★
-      if (firstOscSeries) {
+      if (firstOscSeries && candlestickSeriesRef.current) {
         const mainPriceMap = buildPriceMap(stockDetail.chartData);
         const oscValueMap = buildIndicatorValueMap(
           stockDetail.chartData,
           stockDataWithTechnicals.technicals,
           firstOscIndicatorKey
         );
-
         const cleanupTime = syncTimeScales(mainChart, oscChart);
         const cleanupCross = syncCrosshairs(
           mainChart,
           oscChart,
-          candlestick,
+          candlestickSeriesRef.current,
           firstOscSeries,
           mainPriceMap,
           oscValueMap
         );
-
         syncCleanupRef.current = () => {
           cleanupTime();
           cleanupCross();
         };
       } else {
-        // no series but still sync time scales
         const cleanupTime = syncTimeScales(mainChart, oscChart);
         syncCleanupRef.current = cleanupTime;
       }
 
       oscChart.timeScale().fitContent();
     }
-
-    mainChart.timeScale().fitContent();
-
-    // ── resize ─────────────────────────────────────────────────────────
-    const handleResize = () => {
-      const w = mainChartContainerRef.current?.clientWidth;
-      if (!w) return;
-      try {
-        mainChartRef.current?.applyOptions({ width: w });
-      } catch {
-        /* */
-      }
-      try {
-        oscillatorChartRef.current?.applyOptions({ width: w });
-      } catch {
-        /* */
-      }
-    };
-    window.addEventListener('resize', handleResize);
-
-    return () => {
-      window.removeEventListener('resize', handleResize);
-      cleanupCharts();
-    };
-  }, [stockDetail, theme, selectedIndicators]);
+  }, [stockDetail, theme, selectedIndicators, chartableIndicators]);
 
   // ── toggle ────────────────────────────────────────────────────────
   const toggleIndicator = (id: string) =>
@@ -432,7 +448,7 @@ export function StockDetailPage({ indicators }: StockDetailPageProps) {
   const changeInfo = formatChange(priceChange, priceChangePercent);
 
   const selectedChartableNames = indicators
-    .map((id) => TECHNICAL_PARAMETERS.find((p) => p.id === id && p.chartable))
+    .map((id) => chartableIndicators.find((p) => p.id === id))
     .filter(Boolean)
     .map((p) => p!.name);
 

@@ -335,6 +335,20 @@ export interface EarlyAlertsResponse {
   error: string | null;
 }
 
+export interface Indicators {
+  // success: boolean;
+  // data: {
+    // indicators: {
+  id: string;
+  name: string;
+  description: string;
+  category: string;
+  scale: string;
+  isActive: boolean;
+    // }[];
+  // }
+}
+
 // ===== API FUNCTIONS =====
 
 /**
@@ -350,6 +364,14 @@ export async function getSignals(): Promise<{ signals: TechnicalSignal[] }> {
 export async function getExchanges(): Promise<{ exchanges: Exchange[] }> {
   return apiCall('/api/exchanges');
 }
+
+export async function getIndicators(): Promise<Indicators[]> {
+  const response = await apiCall<{ status: string; data: { indicators: Indicators[] } }>('/api/indicators/all');
+  if (!response.data?.indicators) {
+    throw new ApiError('server', null, 'Malformed indicators response');
+  }
+  return response.data.indicators;
+};
 
 export async function getMarketData(exchange?: string): Promise<MarketIndex[]> {
     const selectedExchange = sanitizeExchange(exchange || localStorage.getItem('selectedExchange') || 'india');

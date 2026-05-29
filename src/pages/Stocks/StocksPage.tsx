@@ -1,22 +1,23 @@
 import { useState, useEffect } from 'react';
 import { Settings } from 'lucide-react';
 import type { StockSummary } from '../../models/Stock';
+import type { TechnicalParameter } from '../../models/Market';
 import { getFilteredStocks } from '../../api/stockApi';
 import { useToast } from '../../components/Toast';
 import { toastMessage } from '../../utils/errorMessage';
-import { TECHNICAL_PARAMETERS } from '../../config/parameters';
 import { Button } from '../../components/Button';
 import { SimpleView } from './components/SimpleView';
 import { Loader } from '../../components/Loader';
 
 interface StocksPageProps {
   parameters: string[];
+  allParameters: TechnicalParameter[];
   onParametersChange: (params: string[]) => void;
 }
 
 // type ViewMode = 'simple' | 'advanced';
 
-export function StocksPage({ parameters, onParametersChange }: StocksPageProps) {
+export function StocksPage({ parameters, allParameters, onParametersChange }: StocksPageProps) {
   const { showToast } = useToast();
   const [stocks, setStocks] = useState<StockSummary[]>([]);
   const [loading, setLoading] = useState(true);
@@ -75,21 +76,22 @@ export function StocksPage({ parameters, onParametersChange }: StocksPageProps) 
             
             {/* Selected Indicators Display */}
             <div className="flex flex-wrap items-center gap-2">
-              {parameters.length === 0 ? (
+              {parameters.length === 0 || parameters.every(id => allParameters.find(p => p.id === id)?.category === 'Strategy') ? (
                 <span className="text-sm italic text-light-text-tertiary dark:text-dark-text-tertiary">
                   No indicators selected
                 </span>
               ) : (
                 parameters.map(paramId => {
-                  const param = TECHNICAL_PARAMETERS.find(p => p.id === paramId);
-                  return param ? (
-                    <span 
+                  const param = allParameters.find(p => p.id === paramId);
+                  if (!param || param.category === 'Strategy') return null;
+                  return (
+                    <span
                       key={paramId}
                       className="px-2 py-1 bg-light-bg-tertiary dark:bg-dark-bg-tertiary border border-light-border-primary dark:border-dark-border-primary rounded text-xs font-medium"
                     >
                       {param.name}
                     </span>
-                  ) : null;
+                  );
                 })
               )}
               {/* {parameters.length > 3 && (
@@ -128,7 +130,7 @@ export function StocksPage({ parameters, onParametersChange }: StocksPageProps) 
                       {/* )} */}
                     </div>
                     <div className="space-y-2 max-h-72 overflow-y-auto">
-                      {TECHNICAL_PARAMETERS.map(param => (
+                      {allParameters.map(param => (
                         <label key={param.id} className="flex items-start gap-3 border-b cursor-pointer hover:bg-light-bg-tertiary dark:hover:bg-dark-bg-tertiary p-2 rounded transition-colors">
                           <input
                             type="checkbox"

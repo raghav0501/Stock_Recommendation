@@ -59,7 +59,7 @@ function AppContent() {
       description: ind.description,
       category: CATEGORY_MAP[ind.category.toLowerCase()] ?? 'Strategy',
       scale: ind.scale as TechnicalParameter['scale'],
-      chartable: true,
+      chartable: ind.scale !== 'none',
     }));
     setParameters(mapped);
   }, [session]);
@@ -100,8 +100,8 @@ function AppContent() {
                     path="/stocks"
                     element={
                       <StocksPage
-                        // technicalParameters={parameters}
                         parameters={selectedParameters}
+                        allParameters={parameters}
                         onParametersChange={setSelectedParameters}
                       />
                     }
