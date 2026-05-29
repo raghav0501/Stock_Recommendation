@@ -1,5 +1,6 @@
 const SYMBOL_RE = /^[A-Z0-9&._-]{1,30}$/i;
 const KNOWN_EXCHANGES = ['india', 'us'] as const;
+const SUFFIX_RE = /\.(NS|BSE)$/i;
 
 export function sanitizeSymbol(symbol: string): string {
   const s = symbol.trim();
@@ -13,4 +14,8 @@ export function sanitizeExchange(exchange: string): string {
     throw new Error(`Unknown exchange: "${e}"`);
   }
   return e;
+}
+
+export function stripSuffix(symbol: string): string {
+  return symbol.replace(SUFFIX_RE, '');
 }

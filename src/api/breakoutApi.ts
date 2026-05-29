@@ -1,18 +1,14 @@
 import { getEarlyAlerts, type EarlyAlertSignalItem } from './backendService';
-import type { EarlyAlertStock, EarlyAlertSignal } from '../models/Breakout';
-
-function toSignal(val: number): EarlyAlertSignal {
-  if (val === 1) return 1;
-  if (val === -1) return -1;
-  return 0;
-}
+import type { EarlyAlertStock } from '../models/Breakout';
+import { toSignal } from './portfolioApi';
+import { stripSuffix } from '../utils/sanitize';
 
 export async function getEarlyAlertStocks(): Promise<EarlyAlertStock[]> {
   const exchange = localStorage.getItem('selectedExchange') || 'india';
   const response = await getEarlyAlerts(exchange);
   if (!response.success || !response.data?.signals) return [];
   return response.data.signals.map((item: EarlyAlertSignalItem) => ({
-    symbol: item.symbol.replace(/\.(NS|BSE)$/i, ''),
+    symbol: stripSuffix(item.symbol),
     companyName: item.company_name,
     mcapTop100: item.mcap_top_100 === 1,
     bbSignal: toSignal(item.bbands_20_EA),

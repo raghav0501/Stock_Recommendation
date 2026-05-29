@@ -8,6 +8,8 @@ import { getEarlyAlertStocks } from '../../api/breakoutApi';
 import type { EarlyAlertStock, EarlyAlertFilter } from '../../models/Breakout';
 import { EARLY_ALERT_LABELS, EARLY_ALERT_COLORS } from '../../models/Breakout';
 import { BADGE, CHIP } from '../../config/signalColors';
+import { FilterChip } from '../../components/FilterChip';
+import { EmptyState } from '../../components/EmptyState';
 import { useToast } from '../../components/Toast';
 import { toastMessage } from '../../utils/errorMessage';
 
@@ -102,33 +104,24 @@ export function EarlyAlertPage() {
           <span className="text-xs font-medium text-light-text-tertiary dark:text-dark-text-tertiary mr-1">
             Filter by:
           </span>
-          {ALL_FILTERS.map(key => {
-            const active = activeFilters.has(key);
-            return (
-              <button
-                key={key}
-                onClick={() => toggleFilter(key)}
-                className={`inline-flex items-center px-2.5 py-1.5 rounded-full text-xs font-medium border transition-all ${
-                  active
-                    ? EARLY_ALERT_COLORS[key]
-                    : 'bg-transparent border-light-border-primary dark:border-dark-border-primary text-light-text-tertiary dark:text-dark-text-tertiary hover:border-light-text-tertiary dark:hover:border-dark-text-tertiary'
-                }`}
-              >
-                {EARLY_ALERT_LABELS[key]}
-              </button>
-            );
-          })}
+          {ALL_FILTERS.map(key => (
+            <FilterChip
+              key={key}
+              label={EARLY_ALERT_LABELS[key]}
+              isActive={activeFilters.has(key)}
+              activeClass={EARLY_ALERT_COLORS[key]}
+              onClick={() => toggleFilter(key)}
+            />
+          ))}
         </div>
       </div>
 
       {/* ── Empty state ───────────────────────────────────────────── */}
       {stocks.length === 0 ? (
-        <Card className="py-16 text-center space-y-3">
-          <TrendingUp className="w-10 h-10 mx-auto text-light-text-tertiary dark:text-dark-text-tertiary opacity-40" />
-          <p className="text-sm text-light-text-secondary dark:text-dark-text-secondary">
-            No early alert stocks detected right now
-          </p>
-        </Card>
+        <EmptyState
+          icon={<TrendingUp className="w-10 h-10 mx-auto text-light-text-tertiary dark:text-dark-text-tertiary opacity-40" />}
+          title="No early alert stocks detected right now"
+        />
       ) : (
         <div className="flex flex-col md:flex-row gap-4 items-start">
           {/* ── Stock list ─────────────────────────────────────────── */}

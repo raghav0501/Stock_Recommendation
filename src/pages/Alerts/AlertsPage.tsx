@@ -3,9 +3,10 @@ import { Bell, RefreshCw, ExternalLink, Zap, Search, X, SlidersHorizontal, Brief
 import { useNavigate } from 'react-router-dom';
 import { Card } from '../../components/Card';
 import { Loader } from '../../components/Loader';
-import { getAlerts } from '../../api/portfolioApi';
+import { getAlerts, stripSuffix } from '../../api/portfolioApi';
 import { useToast } from '../../components/Toast';
 import { BADGE } from '../../config/signalColors';
+import { FilterChip } from '../../components/FilterChip';
 import type { PortfolioAlert, AlertFlags, AlertSignal } from '../../models/Portfolio';
 import { ALERT_LABELS, ALERT_COLORS } from '../../models/Portfolio';
 
@@ -22,8 +23,6 @@ function SignalBadge({ label, signal }: { label: string; signal: AlertSignal }) 
 // ── 4 type-based filter chips (matches any direction) ──────────────
 
 const ALL_FILTER_KEYS: (keyof AlertFlags)[] = ['bollingerBand', 'rsi', 'earlyAlertBB', 'earlyAlertRSI'];
-
-const INACTIVE_CHIP = 'bg-transparent border-light-border-primary dark:border-dark-border-primary text-light-text-tertiary dark:text-dark-text-tertiary hover:border-light-text-tertiary dark:hover:border-dark-text-tertiary';
 
 // ── Helpers ────────────────────────────────────────────────────────
 
@@ -229,20 +228,15 @@ export function AlertsPage() {
             <span className="text-xs font-medium text-light-text-tertiary dark:text-dark-text-tertiary mr-1">
               Filter by:
             </span>
-            {ALL_FILTER_KEYS.map(key => {
-              const isActive = activeFilters.has(key);
-              return (
-                <button
-                  key={key}
-                  onClick={() => toggleFilter(key)}
-                  className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium border transition-all ${
-                    isActive ? ALERT_COLORS[key] : INACTIVE_CHIP
-                  }`}
-                >
-                  {ALERT_LABELS[key]}
-                </button>
-              );
-            })}
+            {ALL_FILTER_KEYS.map(key => (
+              <FilterChip
+                key={key}
+                label={ALERT_LABELS[key]}
+                isActive={activeFilters.has(key)}
+                activeClass={ALERT_COLORS[key]}
+                onClick={() => toggleFilter(key)}
+              />
+            ))}
             {activeFilters.size > 0 && (
               <button
                 onClick={() => setActiveFilters(new Set())}
@@ -272,7 +266,7 @@ export function AlertsPage() {
                 <div className="flex items-start justify-between gap-4 flex-wrap">
                   <div className="min-w-0 space-y-2 flex-1">
                     <p className="font-semibold text-light-text-primary dark:text-dark-text-primary">
-                      {stock.symbol.replace(/\.(NS|BSE)$/i, '')}
+                      {stripSuffix(stock.symbol)}
                     </p>
                     <p className="text-xs text-light-text-tertiary dark:text-dark-text-tertiary truncate">
                       {stock.companyName}
@@ -292,7 +286,7 @@ export function AlertsPage() {
                   <div className="flex items-center gap-2 flex-shrink-0">
                     {showEarlyAlertLink && (
                       <button
-                        onClick={() => navigate('/early-alert', { state: { symbol: stock.symbol.replace(/\.(NS|BSE)$/i, '') } })}
+                        onClick={() => navigate('/early-alert', { state: { symbol: stripSuffix(stock.symbol) } })}
                         className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-500 hover:bg-amber-500/20 transition-colors"
                       >
                         <Zap className="w-3.5 h-3.5" />
@@ -300,7 +294,7 @@ export function AlertsPage() {
                       </button>
                     )}
                     <button
-                      onClick={() => navigate(`/stocks/${stock.symbol.replace(/\.(NS|BSE)$/i, '')}`, { state: { from: 'alerts', exchange: stock.exchange } })}
+                      onClick={() => navigate(`/stocks/${stripSuffix(stock.symbol)}`, { state: { from: 'alerts', exchange: stock.exchange } })}
                       className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border border-light-border-primary dark:border-dark-border-primary text-light-text-secondary dark:text-dark-text-secondary hover:bg-light-bg-tertiary dark:hover:bg-dark-bg-tertiary transition-colors"
                     >
                       <ExternalLink className="w-3.5 h-3.5" />

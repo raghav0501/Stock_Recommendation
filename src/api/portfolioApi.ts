@@ -1,14 +1,14 @@
 import { getPortfolio, addToPortfolio, removeFromPortfolio, getActiveAlerts as fetchActiveAlerts } from './backendService';
 import type { PortfolioHolding, PortfolioAlert, AlertSignal } from '../models/Portfolio';
-import { sanitizeSymbol } from '../utils/sanitize';
+import { sanitizeSymbol, stripSuffix } from '../utils/sanitize';
 
-function toSignal(val: number): AlertSignal {
+export { stripSuffix };
+
+export function toSignal(val: number): AlertSignal {
   if (val === 1) return 1;
   if (val === -1) return -1;
   return 0;
 }
-
-const SUFFIX_RE = /\.(NS|BSE)$/i;
 
 function mapItem(item: {
   symbol: string;
@@ -22,10 +22,6 @@ function mapItem(item: {
     exchange: item.exchange,
     addedAt: item.addedAt,
   };
-}
-
-export function stripSuffix(symbol: string): string {
-  return symbol.replace(SUFFIX_RE, '');
 }
 
 // ── Holdings CRUD ──────────────────────────────────────────────────

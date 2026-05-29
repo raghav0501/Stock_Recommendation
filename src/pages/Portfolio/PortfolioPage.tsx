@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Plus, Trash2, Briefcase, AlertCircle } from 'lucide-react';
+import { EmptyState } from '../../components/EmptyState';
 import { useNavigate } from 'react-router-dom';
 import { Card } from '../../components/Card';
 import { Button } from '../../components/Button';
@@ -100,30 +101,17 @@ export function PortfolioPage() {
 
       {/* ── Load error state ─────────────────────────────────────── */}
       {loadError ? (
-        <Card className="py-16 text-center space-y-3">
-          <AlertCircle className="w-10 h-10 mx-auto text-rose-400 opacity-60" />
-          <div>
-            <p className="text-sm font-medium text-light-text-secondary dark:text-dark-text-secondary mb-1">
-              Failed to load portfolio
-            </p>
-            <p className="text-xs text-light-text-tertiary dark:text-dark-text-tertiary">
-              Check your connection and refresh the page
-            </p>
-          </div>
-        </Card>
+        <EmptyState
+          icon={<AlertCircle className="w-10 h-10 mx-auto text-rose-400 opacity-60" />}
+          title="Failed to load portfolio"
+          description="Check your connection and refresh the page"
+        />
       ) : holdings.length === 0 ? (
-        /* ── Empty state ───────────────────────────────────────── */
-        <Card className="py-16 text-center space-y-3">
-          <Briefcase className="w-10 h-10 mx-auto text-light-text-tertiary dark:text-dark-text-tertiary opacity-40" />
-          <div>
-            <p className="text-sm font-medium text-light-text-secondary dark:text-dark-text-secondary mb-1">
-              Your portfolio is empty
-            </p>
-            <p className="text-xs text-light-text-tertiary dark:text-dark-text-tertiary">
-              Add stocks to start tracking alerts
-            </p>
-          </div>
-        </Card>
+        <EmptyState
+          icon={<Briefcase className="w-10 h-10 mx-auto text-light-text-tertiary dark:text-dark-text-tertiary opacity-40" />}
+          title="Your portfolio is empty"
+          description="Add stocks to start tracking alerts"
+        />
       ) : (
         /* ── Holdings table ────────────────────────────────────── */
         <Card className="overflow-hidden p-0">

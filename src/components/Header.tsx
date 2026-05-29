@@ -11,7 +11,6 @@ import { useToast } from './Toast';
 import { toastMessage } from '../utils/errorMessage';
 
 export function Header() {
-  const { theme, toggleTheme } = useTheme();
   const { logout, user } = useAuth();
   const { showToast } = useToast();
   const navigate = useNavigate();
@@ -26,9 +25,16 @@ export function Header() {
   const isActive = (path: string) => location.pathname === path || location.pathname.startsWith(path + '/');
 
   const navItems = [
-    { path: '/alerts', label: 'Alerts', icon: <Bell className="w-4 h-4" /> },
-    { path: '/technical-indicators', label: 'Indicators', icon: <Activity className="w-4 h-4" /> },
-    { path: '/stocks', label: 'Stocks', icon: <TrendingUp className="w-4 h-4" /> },
+    { path: '/alerts',               label: 'Alerts',      icon: <Bell     className="w-4 h-4" /> },
+    { path: '/technical-indicators', label: 'Indicators',  icon: <Activity className="w-4 h-4" /> },
+    { path: '/stocks',               label: 'Stocks',      icon: <TrendingUp className="w-4 h-4" /> },
+  ];
+
+  const settingsItems = [
+    { path: '/watchlist',   label: 'Watchlist',    icon: <BookMarked   className="w-4 h-4" /> },
+    { path: '/portfolio',   label: 'Portfolio',    icon: <Briefcase    className="w-4 h-4" /> },
+    { path: '/early-alert', label: 'Early Alerts', icon: <Zap          className="w-4 h-4" /> },
+    { path: '/backtest',    label: 'Backtest',     icon: <FlaskConical className="w-4 h-4" /> },
   ];
 
   useEffect(() => {
@@ -98,13 +104,7 @@ export function Header() {
               )}
 
               {/* Theme Toggle */}
-              <button
-                onClick={toggleTheme}
-                className="p-2.5 rounded-lg bg-light-bg-tertiary dark:bg-dark-bg-tertiary border border-light-border-primary dark:border-dark-border-primary text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text-primary dark:hover:text-dark-text-primary transition-all"
-                aria-label="Toggle theme"
-              >
-                {theme === 'light' ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5" />}
-              </button>
+              <ThemeToggle size="md" />
 
               {/* User Menu Dropdown */}
               {user && (
@@ -149,33 +149,15 @@ export function Header() {
                     Profile
                   </DropdownItem>
 
-                  <DropdownItem
-                    icon={<BookMarked className="w-4 h-4" />}
-                    onClick={() => navigate('/watchlist')}
-                  >
-                    Watchlist
-                  </DropdownItem>
-
-                  <DropdownItem
-                    icon={<Briefcase className="w-4 h-4" />}
-                    onClick={() => navigate('/portfolio')}
-                  >
-                    Portfolio
-                  </DropdownItem>
-
-                  <DropdownItem
-                    icon={<Zap className="w-4 h-4" />}
-                    onClick={() => navigate('/early-alert')}
-                  >
-                    Early Alerts
-                  </DropdownItem>
-
-                  <DropdownItem
-                    icon={<FlaskConical className="w-4 h-4" />}
-                    onClick={() => navigate('/backtest')}
-                  >
-                    Backtest
-                  </DropdownItem>
+                  {settingsItems.map(item => (
+                    <DropdownItem
+                      key={item.path}
+                      icon={item.icon}
+                      onClick={() => navigate(item.path)}
+                    >
+                      {item.label}
+                    </DropdownItem>
+                  ))}
 
                   <DropdownDivider />
 
@@ -192,13 +174,7 @@ export function Header() {
 
             {/* Mobile Menu Button */}
             <div className="md:hidden flex items-center gap-2">
-              <button
-                onClick={toggleTheme}
-                className="p-2 rounded-lg bg-light-bg-tertiary dark:bg-dark-bg-tertiary border border-light-border-primary dark:border-dark-border-primary text-light-text-secondary dark:text-dark-text-secondary"
-                aria-label="Toggle theme"
-              >
-                {theme === 'light' ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5" />}
-              </button>
+              <ThemeToggle size="sm" />
               
               {location.pathname !== '/exchange' && (
                 <button
@@ -271,12 +247,7 @@ export function Header() {
 
               {/* Settings items */}
               <nav className="space-y-1 mb-3">
-                {[
-                  { path: '/watchlist',   label: 'Watchlist',    icon: <BookMarked className="w-4 h-4" /> },
-                  { path: '/portfolio',   label: 'Portfolio',    icon: <Briefcase  className="w-4 h-4" /> },
-                  { path: '/early-alert', label: 'Early Alerts', icon: <Zap        className="w-4 h-4" /> },
-                  { path: '/backtest',    label: 'Backtest',     icon: <FlaskConical className="w-4 h-4" /> },
-                ].map(item => (
+                {settingsItems.map(item => (
                   <button
                     key={item.path}
                     onClick={() => handleNavigation(item.path)}
@@ -316,6 +287,19 @@ interface NavButtonProps {
   label: string;
   active: boolean;
   onClick: () => void;
+}
+
+function ThemeToggle({ size = 'md' }: { size?: 'sm' | 'md' }) {
+  const { theme, toggleTheme } = useTheme();
+  return (
+    <button
+      onClick={toggleTheme}
+      className={`${size === 'md' ? 'p-2.5' : 'p-2'} rounded-lg bg-light-bg-tertiary dark:bg-dark-bg-tertiary border border-light-border-primary dark:border-dark-border-primary text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text-primary dark:hover:text-dark-text-primary transition-all`}
+      aria-label="Toggle theme"
+    >
+      {theme === 'light' ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5" />}
+    </button>
+  );
 }
 
 function NavButton({ icon, label, active, onClick }: NavButtonProps) {
