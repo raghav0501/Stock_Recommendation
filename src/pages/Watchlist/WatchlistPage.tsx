@@ -28,13 +28,14 @@ export function WatchlistPage() {
     (s) => s.exchange.toLowerCase() === selectedExchange.toLowerCase()
   );
 
-  const filtered = query.trim()
+  const filtered = (query.trim()
     ? stocks.filter(
         (s) =>
           s.symbol.toLowerCase().includes(query.toLowerCase()) ||
           s.company_name.toLowerCase().includes(query.toLowerCase())
       )
-    : stocks;
+    : stocks
+  ).slice().sort((a, b) => a.symbol.localeCompare(b.symbol));
 
   return (
     <div className="space-y-6 animate-fade-in">

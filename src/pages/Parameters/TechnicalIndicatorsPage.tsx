@@ -42,20 +42,24 @@ export function TechnicalIndicatorsPage({
     }
   };
 
+  const nonStrategySelected = selectedParameters.filter(
+    id => technicalParameters.find(p => p.id === id)?.category !== 'Strategy'
+  );
+
   const getButtonText = () => {
-    if (selectedParameters.length === 0) return '';
+    if (nonStrategySelected.length === 0) return '';
     const maxDisplay = 4;
-    const selectedNames = selectedParameters
+    const selectedNames = nonStrategySelected
       .slice(0, maxDisplay)
-      .map(name => technicalParameters.find(p => p.id === name)?.name)
+      .map(id => technicalParameters.find(p => p.id === id)?.name)
       .filter(Boolean);
     let text = selectedNames.join(', ');
-    if (selectedParameters.length > maxDisplay) text += '...';
+    if (nonStrategySelected.length > maxDisplay) text += '...';
     return text;
   };
 
   return (
-    <div className={`space-y-6 animate-fade-in ${selectedParameters.length > 0 ? 'pb-24' : ''}`}>
+    <div className={`space-y-6 animate-fade-in ${nonStrategySelected.length > 0 ? 'pb-24' : ''}`}>
       {/* Header */}
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <div>
@@ -135,7 +139,7 @@ export function TechnicalIndicatorsPage({
       </div>
 
       {/* Sticky Bottom Button */}
-      {selectedParameters.length > 0 && (
+      {nonStrategySelected.length > 0 && (
         <div className="fixed bottom-0 left-0 right-0 z-30 backdrop-blur-sm py-4 px-4 animate-slide-up">
           <div className="container mx-auto max-w-7xl">
             <Button

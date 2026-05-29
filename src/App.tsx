@@ -109,7 +109,7 @@ function AppContent() {
 
                   <Route
                     path="/stocks/:symbol"
-                    element={<StockDetailPage indicators={selectedParameters} parameters={parameters} />}
+                    element={<StockDetailPage indicators={selectedParameters} />}
                   />
                   
                   <Route
