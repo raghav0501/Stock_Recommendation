@@ -4,16 +4,17 @@
  */
 
 import { saveChatMessage } from './firebaseService';
+import { STORAGE_KEYS } from '../constants/storage';
 
 const API_BASE_URL = 'https://demo2-664110982097.us-central1.run.app';
 
 // Generate a unique session ID for the user
 const generateSessionId = (): string => {
-  const stored = localStorage.getItem('chat_session_id');
+  const stored = localStorage.getItem(STORAGE_KEYS.CHAT_SESSION);
   if (stored) return stored;
   
   const newId = `user_${Math.random().toString(36).substring(2, 15)}`;
-  localStorage.setItem('chat_session_id', newId);
+  localStorage.setItem(STORAGE_KEYS.CHAT_SESSION, newId);
   return newId;
 };
 
@@ -169,7 +170,7 @@ export function getCurrentSessionId(): string {
  * Clear chat history (localStorage only)
  */
 export function clearChatSession(): void {
-  localStorage.removeItem('chat_session_id');
+  localStorage.removeItem(STORAGE_KEYS.CHAT_SESSION);
 }
 
 export default {

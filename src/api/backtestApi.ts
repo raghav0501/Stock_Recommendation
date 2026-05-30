@@ -1,4 +1,5 @@
 import { ApiError } from '../utils/apiError';
+import { STORAGE_KEYS } from '../constants/storage';
 
 const BACKTEST_API_BASE = import.meta.env.VITE_MIDDLEWARE_URL || 'http://localhost:3000';
 // const BACKTEST_API_BASE = 'http://localhost:3000';
@@ -35,7 +36,7 @@ export interface BacktestResult {
 
 function getAccessToken(): string | null {
   try {
-    const raw = localStorage.getItem('alumnus_session');
+    const raw = localStorage.getItem(STORAGE_KEYS.SESSION);
     if (!raw) return null;
     return (JSON.parse(raw) as { accessToken?: string }).accessToken ?? null;
   } catch {

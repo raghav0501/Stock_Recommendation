@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { STORAGE_KEYS } from '../../constants/storage';
 import { Search } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Card } from '../../components/Card';
@@ -19,7 +20,7 @@ const EXCHANGE_LABELS: Record<string, string> = {
 
 export function WatchlistPage() {
   const navigate = useNavigate();
-  const selectedExchange = localStorage.getItem('selectedExchange') || 'india';
+  const selectedExchange = localStorage.getItem(STORAGE_KEYS.EXCHANGE) || 'india';
   const exchangeLabel = EXCHANGE_LABELS[selectedExchange] || selectedExchange.toUpperCase();
   const [query, setQuery] = useState('');
 

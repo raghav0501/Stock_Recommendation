@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { STORAGE_KEYS } from '../../constants/storage';
 import { useAsyncData } from '../../hooks/useAsyncData';
 import { Plus, Trash2, Briefcase, AlertCircle } from 'lucide-react';
 import { EmptyState } from '../../components/EmptyState';
@@ -23,7 +24,7 @@ export function PortfolioPage() {
   const [showModal, setShowModal] = useState(false);
   const [confirmSymbol, setConfirmSymbol] = useState<string | null>(null);
 
-  const selectedExchange = localStorage.getItem('selectedExchange') || 'india';
+  const selectedExchange = localStorage.getItem(STORAGE_KEYS.EXCHANGE) || 'india';
 
   const {
     data: holdings,

@@ -1,3 +1,5 @@
+import { STORAGE_KEYS } from '../constants/storage';
+
 /**
  * Formatting Utilities
  * Centralized functions for formatting numbers, currency, dates, etc.
@@ -53,7 +55,7 @@ export function formatCurrency(
   // Get symbol based on exchange if not provided
   let symbol = options.symbol;
   if (!symbol) {
-    const exchange = localStorage.getItem('selectedExchange') || 'india';
+    const exchange = localStorage.getItem(STORAGE_KEYS.EXCHANGE) || 'india';
     symbol = exchange === 'india' ? '₹' : '$';
   }
   

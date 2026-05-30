@@ -1,6 +1,7 @@
 import type { MarketIndex } from "../models/Market";
 import { sanitizeSymbol, sanitizeExchange } from "../utils/sanitize";
 import { ApiError } from "../utils/apiError";
+import { STORAGE_KEYS } from '../constants/storage';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
@@ -8,7 +9,7 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 function getStoredSession(): Record<string, string> | null {
   try {
-    const raw = localStorage.getItem('alumnus_session');
+    const raw = localStorage.getItem(STORAGE_KEYS.SESSION);
     return raw ? (JSON.parse(raw) as Record<string, string>) : null;
   } catch {
     return null;
@@ -25,12 +26,12 @@ function getRefreshToken(): string | null {
 
 function saveTokens(accessToken: string, refreshToken: string): void {
   const session = getStoredSession() ?? {};
-  localStorage.setItem('alumnus_session', JSON.stringify({ ...session, accessToken, refreshToken }));
+  localStorage.setItem(STORAGE_KEYS.SESSION, JSON.stringify({ ...session, accessToken, refreshToken }));
 }
 
 function forceLogout(): void {
-  localStorage.removeItem('alumnus_session');
-  localStorage.removeItem('alumnus_user');
+  localStorage.removeItem(STORAGE_KEYS.SESSION);
+  localStorage.removeItem(STORAGE_KEYS.USER);
   window.location.href = '/login/otp';
 }
 
@@ -374,7 +375,7 @@ export async function getIndicators(): Promise<Indicators[]> {
 };
 
 export async function getMarketData(exchange?: string): Promise<MarketIndex[]> {
-    const selectedExchange = sanitizeExchange(exchange || localStorage.getItem('selectedExchange') || 'india');
+    const selectedExchange = sanitizeExchange(exchange || localStorage.getItem(STORAGE_KEYS.EXCHANGE) || 'india');
     const response = await apiCall<{ status: string; data: { indices: MarketIndex[] } }>(`/api/markets/indices/${encodeURIComponent(selectedExchange)}`);
     if (!response.data?.indices) {
       throw new ApiError('server', null, 'Malformed market indices response');

@@ -1,4 +1,5 @@
 import type { Stock } from '../models/Stock';
+import { STORAGE_KEYS } from '../constants/storage';
 import { screenStocks, mapBackendSentiment, getStockPriceChange, getStockDetails, getStockNews, getStockFundamentals, type TechnicalData } from './backendService';
 import { ApiError } from '../utils/apiError';
 
@@ -57,7 +58,7 @@ export interface StockFundamentals {
  * Get filtered stocks from backend based on selected parameters
  */
 export async function getFilteredStocks(selectedParameters: string[] = []): Promise<Stock[]> {
-  const exchange = localStorage.getItem('selectedExchange') || 'india';
+  const exchange = localStorage.getItem(STORAGE_KEYS.EXCHANGE) || 'india';
 
   if (selectedParameters.length === 0) return [];
 
@@ -98,7 +99,7 @@ export async function getFilteredStocks(selectedParameters: string[] = []): Prom
  * Function to fetch stock details only
  */
 export async function getStockDetail(symbol: string, indicators: string[], exchangeOverride?: string): Promise<StockDetail> {
-  const exchange = exchangeOverride || localStorage.getItem('selectedExchange') || 'india';
+  const exchange = exchangeOverride || localStorage.getItem(STORAGE_KEYS.EXCHANGE) || 'india';
   const fullSymbol = exchange === 'india' && !symbol.endsWith('.NS') ? `${symbol}.NS` : symbol;
   const detailsResponse = await getStockDetails(exchange, fullSymbol, indicators);
 
@@ -127,7 +128,7 @@ export async function getStockDetail(symbol: string, indicators: string[], excha
  * Function to get the latest news for a stock
  */
 export async function getStockNewsArticle(symbol: string): Promise<StockNewsArticle> {
-  const exchange = localStorage.getItem('selectedExchange') || 'india';
+  const exchange = localStorage.getItem(STORAGE_KEYS.EXCHANGE) || 'india';
   const fullSymbol = exchange === 'india' && !symbol.endsWith('.NS') ? `${symbol}.NS` : symbol;
   const newsResponse = await getStockNews(fullSymbol);
 
@@ -191,7 +192,7 @@ function fmtRatio(value: number | null | undefined): string {
 }
 
 export async function getStockFundamentalsData(symbol: string, exchangeOverride?: string): Promise<StockFundamentals> {
-  const exchange = exchangeOverride || localStorage.getItem('selectedExchange') || 'india';
+  const exchange = exchangeOverride || localStorage.getItem(STORAGE_KEYS.EXCHANGE) || 'india';
   const fullSymbol = exchange === 'india' && !symbol.endsWith('.NS') ? `${symbol}.NS` : symbol;
   const fundamentalsResponse = await getStockFundamentals(fullSymbol, exchange);
   if (!fundamentalsResponse.stock_data) {

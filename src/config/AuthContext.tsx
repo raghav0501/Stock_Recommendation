@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
+import { STORAGE_KEYS } from '../constants/storage';
 
 const OTP_API_BASE = import.meta.env.VITE_MIDDLEWARE_URL;
 // const OTP_API_BASE = 'http://localhost:3000';
@@ -55,12 +56,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const savedUser = localStorage.getItem('alumnus_user');
+    const savedUser = localStorage.getItem(STORAGE_KEYS.USER);
     if (savedUser) {
       setUser(JSON.parse(savedUser));
     }
     // TODO: On app load, validate stored tokens via GET /api/auth/me or a token-refresh endpoint
-    const savedSession = localStorage.getItem('alumnus_session');
+    const savedSession = localStorage.getItem(STORAGE_KEYS.SESSION);
     if (savedSession) {
       setSession(JSON.parse(savedSession));
     }
@@ -76,7 +77,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (email && password) {
       const user: User = { email, name: email.split('@')[0] };
       setUser(user);
-      localStorage.setItem('alumnus_user', JSON.stringify(user));
+      localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(user));
       return true;
     }
     return false;
@@ -132,8 +133,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     setUser(loggedInUser);
     setSession(authSession);
-    localStorage.setItem('alumnus_user', JSON.stringify(loggedInUser));
-    localStorage.setItem('alumnus_session', JSON.stringify(authSession));
+    localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(loggedInUser));
+    localStorage.setItem(STORAGE_KEYS.SESSION, JSON.stringify(authSession));
 
     return true;
   };
@@ -141,9 +142,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = () => {
     setUser(null);
     setSession(null);
-    localStorage.removeItem('alumnus_user');
+    localStorage.removeItem(STORAGE_KEYS.USER);
     // TODO: Call POST /api/auth/logout to invalidate tokens on the backend
-    localStorage.removeItem('alumnus_session');
+    localStorage.removeItem(STORAGE_KEYS.SESSION);
   };
 
   return (

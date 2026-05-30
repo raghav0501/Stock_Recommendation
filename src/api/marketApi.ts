@@ -1,4 +1,5 @@
 import type { MarketIndex, MarketStatus } from '../models/Market';
+import { STORAGE_KEYS } from '../constants/storage';
 import { getMarketData } from './backendService';
 
 // const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
@@ -16,7 +17,7 @@ export async function getMarketStatus(): Promise<MarketStatus> {
   const minutes = now.getMinutes();
   const currentMinutes = hours * 60 + minutes;
   
-  const exchange = localStorage.getItem('selectedExchange') || 'india';
+  const exchange = localStorage.getItem(STORAGE_KEYS.EXCHANGE) || 'india';
   
   let marketOpen: number;
   let marketClose: number;

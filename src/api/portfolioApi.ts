@@ -1,4 +1,5 @@
 import { getPortfolio, addToPortfolio, removeFromPortfolio, getActiveAlerts as fetchActiveAlerts } from './backendService';
+import { STORAGE_KEYS } from '../constants/storage';
 import type { PortfolioHolding, PortfolioAlert, AlertSignal } from '../models/Portfolio';
 import { sanitizeSymbol, stripSuffix } from '../utils/sanitize';
 
@@ -27,7 +28,7 @@ function mapItem(item: {
 // ── Holdings CRUD ──────────────────────────────────────────────────
 
 export async function getHoldings(): Promise<PortfolioHolding[]> {
-  const exchange = localStorage.getItem('selectedExchange') || 'india';
+  const exchange = localStorage.getItem(STORAGE_KEYS.EXCHANGE) || 'india';
   const response = await getPortfolio(exchange);
   if (response.status !== 'success' || !response.data?.watchlist) {
     throw new Error('Failed to load portfolio');
@@ -46,7 +47,7 @@ export async function removeHolding(symbol: string): Promise<void> {
 // ── Active Alerts ──────────────────────────────────────────────────
 
 export async function getAlerts(): Promise<PortfolioAlert[]> {
-  const exchange = localStorage.getItem('selectedExchange') || 'india';
+  const exchange = localStorage.getItem(STORAGE_KEYS.EXCHANGE) || 'india';
   const response = await fetchActiveAlerts(exchange);
   if (!response.success || !response.data?.signals) return [];
 

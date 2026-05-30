@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { STORAGE_KEYS } from '../../constants/storage';
 import { useNavigate } from 'react-router-dom';
 import { Building2, Globe } from 'lucide-react';
 import { Card } from '../../components/Card';
@@ -42,7 +43,7 @@ export function ExchangePage() {
   const handleClick = (id: string) => {
     // if (selectedExchange) {
       // Store selected exchange in localStorage for future use
-      localStorage.setItem('selectedExchange', id);
+      localStorage.setItem(STORAGE_KEYS.EXCHANGE, id);
       // navigate('/technical-indicators'); // original flow
       navigate('/alerts');
     // }

@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import { STORAGE_KEYS } from '../../constants/storage';
 import {
   Search, ChevronRight, ChevronLeft, Play,
   TrendingUp, TrendingDown, X, SlidersHorizontal,
@@ -373,7 +374,7 @@ export function BacktestPage() {
   const [modalStockQuery, setModalStockQuery] = useState('');
   const searchRef = useRef<HTMLDivElement>(null);
 
-  const selectedExchange = localStorage.getItem('selectedExchange') || 'india';
+  const selectedExchange = localStorage.getItem(STORAGE_KEYS.EXCHANGE) || 'india';
   const exchangeStocks = (stockUniverse as StockEntry[]).filter(
     (s) => s.exchange.toLowerCase() === selectedExchange.toLowerCase()
   );
