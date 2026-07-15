@@ -1,53 +1,190 @@
 # 📈 Stock Technical Analysis API
 
-A FastAPI-based backend service for Indian and US stock market analysis with technical indicators, stock screening, and company market data APIs.
+Backend API reference for the Alumnus Stock Recommendation Platform. Documents every endpoint consumed by the frontend, grouped by service, with request and response structures.
 
 ---
 
-## 🌍 Base URL
+## 🌍 Services & Base URLs
 
-https://demo2-664110982097.us-central1.run.app
+| Service | Env Variable | Purpose |
+|---|---|---|
+| Main Backend | `VITE_API_BASE_URL` | Stock data, screening, watchlist, alerts, news, chat |
+| Middleware | `VITE_MIDDLEWARE_URL` | OTP authentication, backtesting |
+
+### Environment Configuration
+
+Create a `.env` file:
+
+```
+VITE_API_BASE_URL=<main-backend-url>
+VITE_MIDDLEWARE_URL=<middleware-url>
+```
 
 ---
 
-## 🚀 Overview
+## 🔐 Authentication
 
-This API provides:
+All Main Backend endpoints (except auth) require a Bearer token:
 
-- 20+ Technical Indicators (SMA, EMA, RSI, MACD, Bollinger Bands, etc.)
-- Advanced Stock Screening with multi-filter support
-- Company Metadata with OHLCV historical data
-- Real-time Market Data integration
-- Pre-calculated technical indicators using TA-Lib
+```
+Authorization: Bearer <accessToken>
+```
+
+When a response body contains `{ "code": "INVALID_TOKEN" }`, the frontend silently calls the refresh endpoint (single-flight — concurrent requests share one refresh) and retries the original request once. If the retry also fails, the user is force-logged-out.
 
 ---
 
-# 📡 API Endpoints
+# 📡 Middleware Endpoints
 
-## 1️⃣ GET /api/signals
+## 1️⃣ POST /api/auth/otp/request
+
+Sends a one-time password to the user's email. Always returns success (does not reveal whether the email is registered).
+
+### Request
+```json
+{ "email": "user@alumnux.com" }
+```
+
+---
+
+## 2️⃣ POST /api/auth/otp/verify
+
+Verifies the OTP and returns the full session payload.
+
+### Request
+```json
+{ "email": "user@alumnux.com", "otp": "123456" }
+```
+
+### Response
+```json
+{
+  "status": "success",
+  "data": {
+    "user": {
+      "id": "u_123",
+      "name": "Raghav",
+      "email": "user@alumnux.com",
+      "role": "user",
+      "theme": "dark"
+    },
+    "accessToken": "<jwt>",
+    "refreshToken": "<jwt>",
+    "sessionId": "sess_abc",
+    "markets": [
+      {
+        "id": "india",
+        "name": "India",
+        "fullName": "National Stock Exchange & Bombay Stock Exchange",
+        "country": "India",
+        "description": "NSE & BSE listed equities"
+      }
+    ],
+    "entitledIndicators": [
+      {
+        "id": "rsi_14",
+        "name": "RSI (14)",
+        "description": "Buy when RSI < 30, Sell when RSI > 70",
+        "category": "momentum",
+        "scale": "oscillator"
+      }
+    ]
+  }
+}
+```
+
+> `markets` drives the Exchange page; `entitledIndicators` drives which indicators the user can select across the app.
+
+---
+
+## 3️⃣ POST /api/backtest/signalcount
+
+Runs a single-indicator backtest over a date range.
+
+### Request
+```json
+{
+  "exchange": "india",
+  "symbol": "RELIANCE.NS",
+  "indicator": "rsi_14",
+  "date_from": "2025-09-01",
+  "date_to": "2026-03-01"
+}
+```
+
+### Response
+```json
+{
+  "status": "success",
+  "data": {
+    "exchange": "india",
+    "symbol": "RELIANCE.NS",
+    "date_from": "2025-09-01",
+    "date_to": "2026-03-01",
+    "indicator": "rsi_14",
+    "bull_count": 7,
+    "bear_count": 4,
+    "plot_chart_signal": [
+      {
+        "date": "2025-09-01",
+        "signal": 1,
+        "open": 2900.5,
+        "high": 2950.0,
+        "low": 2890.1,
+        "close": 2942.3,
+        "volume": 4521000,
+        "rsi_14": 28.4
+      }
+    ]
+  }
+}
+```
+
+> `signal`: `1` = buy, `-1` = sell, `0` = none. Each point also carries the indicator value(s) keyed by indicator id (e.g. `rsi_14`, `bb_upper`).
+
+---
+
+# 📡 Main Backend Endpoints
+
+## 4️⃣ POST /api/auth/refresh
+
+Exchanges a refresh token for a new token pair. Called automatically on token expiry.
+
+### Request
+```json
+{ "refreshToken": "<jwt>" }
+```
+
+### Response
+```json
+{
+  "status": "success",
+  "data": {
+    "accessToken": "<new-jwt>",
+    "refreshToken": "<new-jwt>"
+  }
+}
+```
+
+---
+
+## 5️⃣ GET /api/signals
 
 Returns all available technical indicators with descriptions and trading logic.
 
-### Response Example
+### Response
 ```json
 {
   "signals": [
-    {
-      "name": "sma_20",
-      "description": "Buy when price is 1% above 20-day SMA, Sell when 1% below"
-    },
-    {
-      "name": "rsi_14",
-      "description": "Buy when RSI < 30, Sell when RSI > 70"
-    },
-    ...
+    { "name": "sma_20", "description": "Buy when price is 1% above 20-day SMA, Sell when 1% below" },
+    { "name": "rsi_14", "description": "Buy when RSI < 30, Sell when RSI > 70" }
   ]
 }
 ```
 
 ---
 
-## 2️⃣ GET /api/exchanges
+## 6️⃣ GET /api/exchanges
 
 Returns supported stock exchanges.
 
@@ -63,19 +200,72 @@ Returns supported stock exchanges.
 
 ---
 
-## 3️⃣ POST /api/screen
+## 7️⃣ GET /api/indicators/all
 
-Filters stocks based on selected technical indicators.
+Returns the full indicator catalogue with metadata.
 
-### Request Example
+### Response
 ```json
 {
-  "exchange": "india",
-  "filters": ["rsi_14", "bbands_20"]
+  "status": "success",
+  "data": {
+    "indicators": [
+      {
+        "id": "rsi_14",
+        "name": "RSI (14)",
+        "description": "Buy when RSI < 30, Sell when RSI > 70",
+        "category": "momentum",
+        "scale": "oscillator",
+        "isActive": true
+      }
+    ]
+  }
 }
 ```
 
-### Response Example
+---
+
+## 8️⃣ GET /api/markets/indices/{exchange}
+
+Returns real-time market indices for the given exchange (`india` | `us`).
+
+### Response
+```json
+{
+  "status": "success",
+  "data": {
+    "indices": [
+      {
+        "name": "NIFTY 50",
+        "value": 24312.5,
+        "change": 152.3,
+        "changePercent": 0.63,
+        "timestamp": "2026-06-23T10:15:00Z",
+        "exchange": "india"
+      }
+    ]
+  }
+}
+```
+
+---
+
+## 9️⃣ POST /api/screen
+
+Screens stocks based on selected technical indicators. Each filter id maps to an (currently empty) options object.
+
+### Request
+```json
+{
+  "exchange": "india",
+  "filters": {
+    "rsi_14": {},
+    "bbands_20": {}
+  }
+}
+```
+
+### Response
 ```json
 {
   "success": true,
@@ -84,210 +274,373 @@ Filters stocks based on selected technical indicators.
     "count": 393,
     "buy": [
       {
-          "symbol": "AFCONS.NS",
-          "latest_price": 320.20001220703125,
-          "price_change_pct": -0.9588542230080837
-      },
-      ...
+        "symbol": "AFCONS.NS",
+        "latest_price": 320.20,
+        "price_change_pct": -0.958
+      }
     ],
-    "neutral":[...],
-    "sell":[...]
+    "neutral": [],
+    "sell": []
   }
 }
 ```
 
 ---
 
-## 4️⃣ POST /api/stock-details
+## 🔟 POST /api/stock-details
 
-Returns stock metadata, OHLCV data, and calculated technical indicators.
+Returns stock metadata, OHLCV history, calculated technicals for the requested indicators, and an AI-generated summary.
 
-### Request Example
+### Request
 ```json
 {
   "exchange": "india",
-  "symbol": "TATACOMM.NS"
+  "symbol": "TATACOMM.NS",
+  "indicators": ["rsi_14", "bbands_20"]
 }
 ```
 
-### Response Example
+### Response
 ```json
 {
   "success": true,
-    "metadata": {
-        "name": "Tata Communications Limited",
-        "sector": "Communication Services",
-        "industry": "Telecom Services",
-        "description": "Tata Communications Limited provides telecom services worldwide. The company operates ...",
-        "website": "https://www.tatacommunications.com",
-        "country": "India",
-        "employees": 5852
-    },
-    "ohlcv": [
-        {
-            "time": "2024-09-18",
-            "open": 1991.372706987314,
-            "high": 2000.0433206472856,
-            "low": 1948.019879237148,
-            "close": 1965.755126953125,
-            "volume": 226556
-        },
-        {
-            "time": "2024-09-19",
-            "open": 1970.5831095351853,
-            "high": 1999.1072519357679,
-            "low": 1919.3479486872704,
-            "close": 1946.1971435546875,
-            "volume": 501366
-        },
-        ...
-    ],
-    "technicals": [
-      {
-          "time": "2024-09-10",
-          "sma_20": null,
-          "sma_50": null,
-          "sma_200": null,
-          "ema_20": null,
-          "ema_50": null,
-          "wma_20": null,
-          "tema_30": null,
-          "kama_30": null,
-          "adx_14": null,
-          "trix": null,
-          "rsi_14": null,
-          "macd": null,
-          "macd_signal": null,
-          "macd_hist": null,
-          "stoch_k": null,
-          "stoch_d": null,
-          "cci_20": null,
-          "roc_10": null,
-          "mom_10": null,
-          "willr_14": null,
-          "ultosc": null,
-          "apo": null,
-          "ppo": null,
-          "atr_14": null,
-          "natr": null,
-          "bb_upper": null,
-          "bb_mid": null,
-          "bb_lower": null,
-          "stddev_20": null,
-          "var_20": null,
-          "obv": 1071168.0,
-          "adosc": null,
-          "mfi_14": null,
-          "chaikin": null,
-          "ados": 825928.2816611822
-      },
-      ...
-    ],
-    "fundamentals": {
-        "profitability": [
-          {
-              "date": "2025-06-30",
-              "Net Income": 1899800000.0,
-              "Total Revenue": 59598500000.0,
-              "Operating Income": 4711200000.0,
-              "Gross Profit": 32307800000.0,
-              "EBITDA": 11334700000.0,
-              "EBIT": 4677800000.0
-          },
-          ...
-        ],
-        "valuation": [
-          {
-              "date": "2026-02-11",
-              "P/E Ratio": 31.548435,
-              "Forward P/E": 25.598349,
-              "P/B Ratio": 17.054317,
-              "Market Cap": 485440520192.0
-          },
-          ...
-        ],
-        "financial_health": [
-          {
-              "date": "2025-03-31",
-              "Total Assets": 265845800000.0,
-              "Total Debt": 123573200000.0,
-              "Stockholders Equity": 30211700000.0,
-              "Current Assets": 72386800000.0,
-              "Current Liabilities": 125039100000.0,
-              "Cash & Equivalents": 5339000000.0,
-              "Working Capital": -52652300000.0
-          },
-          ...
-        ]
+  "metadata": {
+    "company_name": "Tata Communications Limited",
+    "sector": "Communication Services",
+    "industry": "Telecom Services",
+    "description": "Tata Communications Limited provides telecom services worldwide...",
+    "website": "https://www.tatacommunications.com",
+    "country": "India",
+    "employees": 5852
+  },
+  "ohlcv": [
+    {
+      "time": "2026-05-18",
+      "open": 1991.37,
+      "high": 2000.04,
+      "low": 1948.01,
+      "close": 1965.75,
+      "volume": 226556
     }
+  ],
+  "technicals": [
+    {
+      "time": "2026-05-18",
+      "rsi_14": 42.7,
+      "bb_upper": 2050.1,
+      "bb_mid": 1980.4,
+      "bb_lower": 1910.7
+    }
+  ],
+  "summary": "Tata Communications is currently trading near its 20-day mean..."
+}
+```
+
+> `technicals` fields vary with the requested `indicators`. Possible keys include: `sma_20`, `sma_50`, `sma_200`, `ema_20`, `ema_50`, `wma_20`, `tema_30`, `kama_30`, `adx_14`, `trix`, `rsi_14`, `macd`, `macd_signal`, `macd_hist`, `stoch_k`, `stoch_d`, `cci_20`, `roc_10`, `mom_10`, `willr_14`, `ultosc`, `apo`, `ppo`, `atr_14`, `natr`, `bb_upper`, `bb_mid`, `bb_lower`, `stddev_20`, `var_20`, `obv`, `adosc`, `mfi_14`, `chaikin`, `ados`.
+
+---
+
+## 1️⃣1️⃣ POST /api/stock-details/stock_snapshot/{exchange}/{symbol}
+
+Returns the latest fundamentals snapshot for a stock.
+
+### Example
+```
+POST /api/stock-details/stock_snapshot/india/TATACOMM.NS
+```
+
+### Response
+```json
+{
+  "exchange": "india",
+  "ticker": "TATACOMM.NS",
+  "currency": "INR",
+  "stock_data": {
+    "symbol": "TATACOMM.NS",
+    "date": "2026-06-20",
+    "open": 1720.0,
+    "high": 1745.5,
+    "low": 1710.2,
+    "close": 1738.9,
+    "volume": 412000,
+    "avg_volume": 385000,
+    "trailing_pe": 31.54,
+    "forward_pe": 25.59,
+    "market_cap": 485440520192.0,
+    "eps": 55.12,
+    "high_52w": 2091.0,
+    "low_52w": 1291.0,
+    "price_to_book": 17.05
+  }
 }
 ```
 
 ---
 
-## 4️⃣ POST /api/news/stock
+## 1️⃣2️⃣ GET /api/stock-details/news/stock/combined/{symbol}
 
-Returns company metadata, OHLCV data, and calculated technical indicators.
+Returns combined RSS + Telegram news for a stock, each with its own AI summary.
 
-### Example URL
-```json
-https://demo2-664110982097.us-central1.run.app/api/news/stock/TATACOMM.NS
+### Example
+```
+GET /api/stock-details/news/stock/combined/TATACOMM.NS
 ```
 
-### Response Example
+### Response
 ```json
 {
   "success": true,
   "ticker": "TATACOMM.NS",
-  "stock_metadata": {
-      "company_name": "Tata Communications Limited",
-      "sector": "Communication Services",
-      "industry": "Telecom Services",
-      "exchange": "NSI",
-      "market_region": "India"
-  },
-  "news": [
+  "rss_news": [
+    {
+      "news_id": "1508342b584cef680f44b08426298720",
+      "title": "Tata Communications expands data centre footprint",
+      "url": "https://www.livemint.com/...",
+      "source": "LiveMint",
+      "published_date": "2026-06-20T07:02:01+00:00",
+      "description": "Tata Communications announced...",
+      "thumbnail_url": "https://www.livemint.com/lm-img/...",
+      "score": 1.0
+    }
+  ],
+  "rss_news_count": 18,
+  "rss_summary": "Recent coverage focuses on...",
+  "telegram_news": [],
+  "telegram_news_count": 0,
+  "telegram_summary": "",
+  "full_summary": "Overall sentiment is neutral to positive...",
+  "error": null
+}
+```
+
+---
+
+## 1️⃣3️⃣ GET /api/watchlist?exchange={exchange}
+
+Returns the user's portfolio holdings for the given exchange.
+
+### Response
+```json
+{
+  "status": "success",
+  "data": {
+    "watchlist": [
       {
-          "news_id": "1508342b584cef680f44b08426298720",
-          "title": "For Tata Power, Mundra remains the Achilles’s heel, overshadowing other segments",
-          "url": "https://www.livemint.com/market/mark-to-market/tata-power-q3-earnings-tata-power-share-price-mundra-power-plant-11770357973356.html",
-          "source": "LiveMint",
-          "published_date": "2026-02-06T07:02:01+00:00",
-          "description": "Tata Power’s shares have stayed largely flat over the past year, dragged down by Mundra’s underperformance.",
-          "thumbnail_url": "https://www.livemint.com/lm-img/img/2026/02/06/1600x900/logo/2-0-784179017-tatapower-0_1680408594471_1770361021788.JPG",
-          "score": 1.0,
-          "rrf_formula": null
-      },
-      ...
-  ],
-  "news_count": 28,
-  "queries_used": [
-      "Company: Tata Communications Limited (fulltext)",
-      "Ticker: TATACOMM (fulltext)",
-      "Short name: Tata (fulltext)",
-      "Industry: Telecom Services India (hybrid+fulltext)",
-      "Sector: Communication Services India (hybrid+fulltext)",
-      "Ticker: TATACOMM.NS (hybrid)"
-  ],
-  "search_strategy": {
-    "order": "Company → Industry (priority) → Sector → Ticker Hybrid → Market",
-    "priority": "Industry context prioritized over sector for better relevance"
+        "symbol": "RELIANCE.NS",
+        "companyName": "Reliance Industries Limited",
+        "exchange": "india",
+        "addedAt": "2026-05-02T09:30:00Z"
+      }
+    ]
   }
 }
 ```
----
-
-
-# 🛠 Environment Configuration
-
-Create a .env file:
-
-```
-VITE_GET_SIGNALS=https://demo2-664110982097.us-central1.run.app/api/signals
-VITE_GET_EXCHANGES=https://demo2-664110982097.us-central1.run.app/api/exchanges
-VITE_GET_FILTER_STOCKS=https://demo2-664110982097.us-central1.run.app/api/screen
-VITE_GET_STOCK_DETAILS=https://demo2-664110982097.us-central1.run.app/api/stock-details
-VITE_GET_STOCK_NEWS=https://demo2-664110982097.us-central1.run.app/api/news/stock
-```
 
 ---
+
+## 1️⃣4️⃣ POST /api/watchlist
+
+Adds a stock to the user's portfolio.
+
+### Request
+```json
+{
+  "symbol": "RELIANCE.NS",
+  "company_name": "Reliance Industries Limited",
+  "exchange": "india"
+}
+```
+
+---
+
+## 1️⃣5️⃣ DELETE /api/watchlist/{symbol}
+
+Removes a stock from the user's portfolio.
+
+### Example
+```
+DELETE /api/watchlist/RELIANCE.NS
+```
+
+---
+
+## 1️⃣6️⃣ GET /api/watchlist/alerts/active?exchange={exchange}
+
+Returns active technical alerts for the user's portfolio holdings. Signal values: `1` = bullish, `-1` = bearish, `0` = no signal.
+
+### Response
+```json
+{
+  "success": true,
+  "data": {
+    "signals": [
+      {
+        "symbol": "RELIANCE.NS",
+        "company_name": "Reliance Industries Limited",
+        "bbands_20": 1,
+        "rsi_14": 0,
+        "bbands_20_EA": 0,
+        "rsi_14_EA": -1,
+        "description": "Price closed above the upper Bollinger Band..."
+      }
+    ],
+    "has_holdings": true
+  },
+  "error": null
+}
+```
+
+> `bbands_20` / `rsi_14` are confirmed alerts; `bbands_20_EA` / `rsi_14_EA` are early-alert (approaching-threshold) flags. `has_holdings` distinguishes "no alerts" from "empty portfolio".
+
+---
+
+## 1️⃣7️⃣ GET /api/watchlist/alerts/early?exchange={exchange}
+
+Returns stocks in the early-alert zone with 5 sessions of OHLCV + band/RSI data for charting.
+
+### Response
+```json
+{
+  "success": true,
+  "data": {
+    "signals": [
+      {
+        "symbol": "RELIANCE.NS",
+        "company_name": "Reliance Industries Limited",
+        "mcap_top_100": 1,
+        "bbands_20_EA": 1,
+        "rsi_14_EA": 0,
+        "last_5_days": [
+          {
+            "date": "2026-06-16",
+            "open": 2905.0,
+            "high": 2952.0,
+            "low": 2898.5,
+            "close": 2942.3,
+            "volume": 4521000,
+            "bb_lower": 2860.2,
+            "bb_lower_delta": 2874.5,
+            "bb_upper": 2980.7,
+            "bb_upper_delta": 2966.4,
+            "rsi": 61.2,
+            "rsi_lower": 30,
+            "rsi_lower_delta": 33,
+            "rsi_upper": 70,
+            "rsi_upper_delta": 67
+          }
+        ]
+      }
+    ]
+  },
+  "error": null
+}
+```
+
+> `*_delta` fields are the early-alert zone boundaries (rendered as dashed lines). `mcap_top_100`: `1` if the stock is in the top 100 by market cap.
+
+---
+
+## 1️⃣8️⃣ POST /api/chat/respond
+
+Sends a message to the AI chatbot. `session_id` maintains conversation memory across messages.
+
+### Request
+```json
+{
+  "message": "Show me RELIANCE price chart for 30 days",
+  "session_id": "user_k3j2h1g4f5"
+}
+```
+
+### Response
+```json
+{
+  "query": "Show me RELIANCE price chart for 30 days",
+  "classification": {
+    "action": "plot",
+    "response": null
+  },
+  "plan": {},
+  "agent_big_results": {},
+  "agent_results": [
+    {
+      "agent": "plot_agent",
+      "success": true,
+      "strings": [],
+      "plots": [
+        {
+          "tool": "ohlcv_plot",
+          "plot_output": {
+            "type": "ohlcv",
+            "start_date": "2026-05-23",
+            "end_date": "2026-06-23",
+            "data": {
+              "market": "india",
+              "symbols": "RELIANCE.NS",
+              "ohlcv_data": {
+                "RELIANCE.NS": [
+                  {
+                    "date": "2026-05-23",
+                    "open": 2905.0,
+                    "high": 2952.0,
+                    "low": 2898.5,
+                    "close": 2942.3,
+                    "volume": 4521000
+                  }
+                ]
+              }
+            }
+          }
+        }
+      ],
+      "plan": {}
+    }
+  ],
+  "final_response": "Here is the 30-day price chart for RELIANCE...",
+  "plots": [],
+  "news": [
+    {
+      "title": "Reliance announces...",
+      "url": "https://...",
+      "source": "LiveMint",
+      "publishedDate": "2026-06-22T08:00:00Z",
+      "summary": "..."
+    }
+  ],
+  "memory": {
+    "used": true,
+    "conversation_history": [
+      { "user": "previous question", "assistant": "previous answer" }
+    ],
+    "recent_context": null,
+    "history_length": 1
+  }
+}
+```
+
+> `plots[].type` can be `ohlcv`, `returns`, `chart_with_indicators`, or `chart_with_backtest_results` — each with a different `data` shape. Plots may appear at the root `plots` array or nested inside `agent_results[].plots[].plot_output`; the frontend merges both.
+
+---
+
+# 📊 Endpoint Summary
+
+| # | Method | Endpoint | Service | Used By |
+|---|---|---|---|---|
+| 1 | POST | `/api/auth/otp/request` | Middleware | OTP Login |
+| 2 | POST | `/api/auth/otp/verify` | Middleware | OTP Login |
+| 3 | POST | `/api/backtest/signalcount` | Middleware | Backtest page |
+| 4 | POST | `/api/auth/refresh` | Main | Silent token refresh |
+| 5 | GET | `/api/signals` | Main | Indicator catalogue |
+| 6 | GET | `/api/exchanges` | Main | Exchange list |
+| 7 | GET | `/api/indicators/all` | Main | Indicator catalogue |
+| 8 | GET | `/api/markets/indices/{exchange}` | Main | Market overview |
+| 9 | POST | `/api/screen` | Main | Stock screener |
+| 10 | POST | `/api/stock-details` | Main | Stock detail page |
+| 11 | POST | `/api/stock-details/stock_snapshot/{exchange}/{symbol}` | Main | Stock detail fundamentals |
+| 12 | GET | `/api/stock-details/news/stock/combined/{symbol}` | Main | Stock detail news |
+| 13 | GET | `/api/watchlist?exchange=` | Main | Portfolio page |
+| 14 | POST | `/api/watchlist` | Main | Add to portfolio |
+| 15 | DELETE | `/api/watchlist/{symbol}` | Main | Remove from portfolio |
+| 16 | GET | `/api/watchlist/alerts/active?exchange=` | Main | Alerts page |
+| 17 | GET | `/api/watchlist/alerts/early?exchange=` | Main | Early Alert page |
+| 18 | POST | `/api/chat/respond` | Main | AI Chatbot |
