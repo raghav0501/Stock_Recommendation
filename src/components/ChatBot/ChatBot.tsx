@@ -117,7 +117,7 @@ export function ChatBot() {
   };
 
   // Determine chat window width based on whether user has sent messages
-  const chatWidth = hasMessages ? 'w-[95vw]' : 'w-[20vw] md:w-[400px]';
+  const chatWidth = hasMessages ? 'w-[95vw]' : 'lg:w-[400px] w-[95vw]';
 
   return (
     <>

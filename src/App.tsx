@@ -1,24 +1,37 @@
-import { useEffect, useState } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { ErrorBoundary } from 'react-error-boundary';
+import { QueryClientProvider } from '@tanstack/react-query';
+import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
+import { queryClient } from './config/queryClient';
 import { ThemeProvider } from './config/ThemeContext';
 import { AuthProvider, useAuth } from './config/AuthContext';
 import { Header } from './components/Header';
 import { ChatBot } from './components/ChatBot/ChatBot';
 import { ToastProvider } from './components/Toast';
 import { ErrorFallback } from './components/ErrorFallback';
-// import { LoginPage } from './pages/Login/LoginPage';
-import { OtpLoginPage } from './pages/Login/OtpLoginPage';
-import { ExchangePage } from './pages/Exchange/ExchangePage';
-import { StocksPage } from './pages/Stocks/StocksPage';
-import { PortfolioPage } from './pages/Portfolio/PortfolioPage';
-import { WatchlistPage } from './pages/Watchlist/WatchlistPage';
-import { BacktestPage } from './pages/Backtest/BacktestPage';
-import { EarlyAlertPage } from './pages/Breakout/BreakoutPage';
-import { AlertsPage } from './pages/Alerts/AlertsPage';
-import { StockDetailPage } from './pages/StockDetail/StockDetailPage';
-import { TechnicalIndicatorsPage } from './pages/Parameters/TechnicalIndicatorsPage';
+import { Loader } from './components/Loader';
 import type { TechnicalParameter } from './models/Market';
+
+// ── Lazy page imports ──────────────────────────────────────────────
+const OtpLoginPage            = lazy(() => import('./pages/Login/OtpLoginPage').then(m => ({ default: m.OtpLoginPage })));
+const ExchangePage            = lazy(() => import('./pages/Exchange/ExchangePage').then(m => ({ default: m.ExchangePage })));
+const StocksPage              = lazy(() => import('./pages/Stocks/StocksPage').then(m => ({ default: m.StocksPage })));
+const StockDetailPage         = lazy(() => import('./pages/StockDetail/StockDetailPage').then(m => ({ default: m.StockDetailPage })));
+const PortfolioPage           = lazy(() => import('./pages/Portfolio/PortfolioPage').then(m => ({ default: m.PortfolioPage })));
+const WatchlistPage           = lazy(() => import('./pages/Watchlist/WatchlistPage').then(m => ({ default: m.WatchlistPage })));
+const AlertsPage              = lazy(() => import('./pages/Alerts/AlertsPage').then(m => ({ default: m.AlertsPage })));
+const EarlyAlertPage          = lazy(() => import('./pages/Breakout/BreakoutPage').then(m => ({ default: m.EarlyAlertPage })));
+const BacktestPage            = lazy(() => import('./pages/Backtest/BacktestPage').then(m => ({ default: m.BacktestPage })));
+const TechnicalIndicatorsPage = lazy(() => import('./pages/Parameters/TechnicalIndicatorsPage').then(m => ({ default: m.TechnicalIndicatorsPage })));
+
+function PageLoader() {
+  return (
+    <div className="flex items-center justify-center h-64">
+      <Loader size="md" />
+    </div>
+  );
+}
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading } = useAuth();
@@ -68,80 +81,87 @@ function AppContent() {
     <div className="min-h-screen bg-light-bg-secondary dark:bg-dark-bg-primary text-light-text-primary dark:text-dark-text-primary transition-colors duration-200">
       <Routes>
         {/* Public Routes */}
-        <Route path="/login/otp" element={<OtpLoginPage />} />
-        {/* <Route path="/login" element={<LoginPage />} /> */}
-        
+        <Route path="/login/otp" element={
+          <Suspense fallback={<PageLoader />}>
+            <OtpLoginPage />
+          </Suspense>
+        } />
+
         {/* Protected Routes */}
         <Route path="/exchange" element={
           <ProtectedRoute>
-            <ExchangePage />
+            <Suspense fallback={<PageLoader />}>
+              <ExchangePage />
+            </Suspense>
           </ProtectedRoute>
         } />
-        
+
         <Route path="/*" element={
           <ProtectedRoute>
             <>
               <Header />
-              <main className="container mx-auto px-12 py-6 max-w-full">
+              <main className="container mx-auto md:px-12 py-6 max-w-full">
                 <ErrorBoundary FallbackComponent={ErrorFallback}>
-                <Routes>
-                  <Route
-                    path="/technical-indicators"
-                    element={
-                      <TechnicalIndicatorsPage
-                        technicalParameters={parameters}
-                        selectedParameters={selectedParameters}
-                        onParametersChange={setSelectedParameters}
+                  <Suspense fallback={<PageLoader />}>
+                    <Routes>
+                      <Route
+                        path="/technical-indicators"
+                        element={
+                          <TechnicalIndicatorsPage
+                            technicalParameters={parameters}
+                            selectedParameters={selectedParameters}
+                            onParametersChange={setSelectedParameters}
+                          />
+                        }
                       />
-                    }
-                  />
-                  
-                  <Route
-                    path="/stocks"
-                    element={
-                      <StocksPage
-                        parameters={selectedParameters}
-                        allParameters={parameters}
-                        onParametersChange={setSelectedParameters}
+
+                      <Route
+                        path="/stocks"
+                        element={
+                          <StocksPage
+                            parameters={selectedParameters}
+                            allParameters={parameters}
+                            onParametersChange={setSelectedParameters}
+                          />
+                        }
                       />
-                    }
-                  />
 
-                  <Route
-                    path="/stocks/:symbol"
-                    element={<StockDetailPage indicators={selectedParameters} />}
-                  />
-                  
-                  <Route
-                    path="/portfolio"
-                    element={<PortfolioPage />}
-                  />
+                      <Route
+                        path="/stocks/:symbol"
+                        element={<StockDetailPage indicators={selectedParameters} />}
+                      />
 
-                  <Route
-                    path="/watchlist"
-                    element={<WatchlistPage />}
-                  />
+                      <Route
+                        path="/portfolio"
+                        element={<PortfolioPage />}
+                      />
 
-                  <Route
-                    path="/alerts"
-                    element={<AlertsPage />}
-                  />
+                      <Route
+                        path="/watchlist"
+                        element={<WatchlistPage />}
+                      />
 
-                  <Route
-                    path="/early-alert"
-                    element={<EarlyAlertPage />}
-                  />
+                      <Route
+                        path="/alerts"
+                        element={<AlertsPage />}
+                      />
 
-                  <Route
-                    path="/backtest"
-                    element={<BacktestPage />}
-                  />
+                      <Route
+                        path="/early-alert"
+                        element={<EarlyAlertPage />}
+                      />
 
-                  <Route path="*" element={<Navigate to="/exchange" replace />} />
-                </Routes>
+                      <Route
+                        path="/backtest"
+                        element={<BacktestPage />}
+                      />
+
+                      <Route path="*" element={<Navigate to="/exchange" replace />} />
+                    </Routes>
+                  </Suspense>
                 </ErrorBoundary>
               </main>
-              
+
               <ChatBot />
             </>
           </ProtectedRoute>
@@ -156,15 +176,18 @@ function AppContent() {
 
 function App() {
   return (
-    <ThemeProvider>
-      <AuthProvider>
-        <ToastProvider>
-          <BrowserRouter>
-            <AppContent />
-          </BrowserRouter>
-        </ToastProvider>
-      </AuthProvider>
-    </ThemeProvider>
+    <QueryClientProvider client={queryClient}>
+      <ThemeProvider>
+        <AuthProvider>
+          <ToastProvider>
+            <BrowserRouter>
+              <AppContent />
+            </BrowserRouter>
+          </ToastProvider>
+        </AuthProvider>
+      </ThemeProvider>
+      <ReactQueryDevtools initialIsOpen={false} />
+    </QueryClientProvider>
   );
 }
 

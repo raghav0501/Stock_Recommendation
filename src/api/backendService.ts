@@ -51,7 +51,7 @@ async function refreshAccessToken(): Promise<string> {
       throw new Error('No refresh token available');
     }
 
-    const response = await fetch(`${API_BASE_URL}/auth/refresh`, {
+    const response = await fetch(`${API_BASE_URL}/api/auth/refresh`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ refreshToken }),
@@ -79,7 +79,7 @@ async function refreshAccessToken(): Promise<string> {
 
 // ── Core API call ──────────────────────────────────────────────────
 
-async function apiCall<T>(
+export async function apiCall<T>(
   endpoint: string,
   options: RequestInit = {},
   isRetry = false
@@ -307,7 +307,11 @@ export interface FundamentalsResponse {
 
 export interface EarlyAlertDayData {
   date: string;
+  open: number;
+  high: number;
+  low: number;
   close: number;
+  volume: number;
   bb_lower: number | null;
   bb_lower_delta: number | null;
   bb_upper: number | null;
@@ -499,6 +503,7 @@ export interface ActiveAlertsResponse {
   success: boolean;
   data: {
     signals: ActiveAlertSignal[];
+    has_holdings: boolean;
   };
   error: string | null;
 }

@@ -4,7 +4,11 @@ export type EarlyAlertSignal = 1 | -1 | 0;
 
 export interface EarlyAlertDayData {
   date: string;
+  open: number;
+  high: number;
+  low: number;
   close: number;
+  volume: number;
   bb_lower: number | null;
   bb_lower_delta: number | null;
   bb_upper: number | null;

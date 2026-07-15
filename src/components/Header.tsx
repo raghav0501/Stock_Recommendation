@@ -55,7 +55,7 @@ export function Header() {
   return (
     <>
       <header className="border-b border-light-border-primary dark:border-dark-border-primary bg-light-bg-elevated dark:bg-dark-bg-elevated shadow-sm sticky top-0 z-40">
-        <div className="container mx-auto px-12 py-4 max-w-full">
+        <div className="container mx-auto md:px-12 py-4 max-w-full">
           <div className="flex items-center justify-between">
             {/* Logo */}
             <div 

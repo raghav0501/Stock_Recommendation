@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { Zap, TrendingUp, ExternalLink, TrendingDown } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { Card } from '../../components/Card';
 import { Loader } from '../../components/Loader';
 import { EarlyAlertChart } from './BreakoutChart';
@@ -12,7 +13,7 @@ import { FilterChip } from '../../components/FilterChip';
 import { EmptyState } from '../../components/EmptyState';
 import { useToast } from '../../components/Toast';
 import { toastMessage } from '../../utils/errorMessage';
-import { useAsyncData } from '../../hooks/useAsyncData';
+import { STORAGE_KEYS } from '../../constants/storage';
 
 const ALL_FILTERS: EarlyAlertFilter[] = ['earlyAlertBB', 'earlyAlertRSI', 'mcapTop100'];
 
@@ -40,20 +41,26 @@ export function EarlyAlertPage() {
   const [selected, setSelected] = useState<EarlyAlertStock | null>(null);
   const [activeFilters, setActiveFilters] = useState<Set<EarlyAlertFilter>>(new Set());
 
-  const { data: stocks, loading } = useAsyncData<EarlyAlertStock[]>(
-    getEarlyAlertStocks,
-    [],
-    [],
-    {
-      onError: err => showToast(toastMessage(err)),
-      onSuccess: data => {
-        const preSelected = incomingSymbol
-          ? (data.find(s => s.symbol === incomingSymbol) ?? data[0] ?? null)
-          : (data[0] ?? null);
-        setSelected(preSelected);
-      },
-    }
-  );
+  const selectedExchange = localStorage.getItem(STORAGE_KEYS.EXCHANGE) || 'india';
+
+  const { data: stocks = [], isLoading: loading, error } = useQuery<EarlyAlertStock[]>({
+    queryKey: ['early-alert-stocks', selectedExchange],
+    queryFn: getEarlyAlertStocks,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  useEffect(() => {
+    if (error) showToast(toastMessage(error));
+  }, [error]);
+
+  useEffect(() => {
+    if (stocks.length === 0) return;
+    setSelected(prev => prev ?? (
+      incomingSymbol
+        ? (stocks.find(s => s.symbol === incomingSymbol) ?? stocks[0] ?? null)
+        : (stocks[0] ?? null)
+    ));
+  }, [stocks, incomingSymbol]);
 
   const toggleFilter = (key: EarlyAlertFilter) => {
     setActiveFilters(prev => {
@@ -63,14 +70,37 @@ export function EarlyAlertPage() {
     });
   };
 
-  const visibleStocks = stocks
-    .filter(stock => {
-      if (activeFilters.has('earlyAlertBB') && stock.bbSignal === 0) return false;
-      if (activeFilters.has('earlyAlertRSI') && stock.rsiSignal === 0) return false;
-      if (activeFilters.has('mcapTop100') && !stock.mcapTop100) return false;
-      return true;
-    })
-    .sort((a, b) => a.symbol.localeCompare(b.symbol));
+  const visibleStocks = useMemo(() => {
+    const sorted = stocks
+      .filter(stock => {
+        if (activeFilters.has('earlyAlertBB') && stock.bbSignal === 0) return false;
+        if (activeFilters.has('earlyAlertRSI') && stock.rsiSignal === 0) return false;
+        if (activeFilters.has('mcapTop100') && !stock.mcapTop100) return false;
+        return true;
+      })
+      .sort((a, b) => a.symbol.localeCompare(b.symbol));
+
+    if (incomingSymbol) {
+      const idx = sorted.findIndex(s => s.symbol === incomingSymbol);
+      if (idx > 0) {
+        const [pinned] = sorted.splice(idx, 1);
+        sorted.unshift(pinned);
+      }
+    }
+
+    return sorted;
+  }, [stocks, activeFilters, incomingSymbol]);
+
+  // When active filters change and selected stock is no longer visible, pick the first visible one
+  const visibleStocksRef = useRef(visibleStocks);
+  visibleStocksRef.current = visibleStocks;
+  useEffect(() => {
+    setSelected(prev => {
+      if (!prev) return prev;
+      const visible = visibleStocksRef.current;
+      return visible.some(s => s.symbol === prev.symbol) ? prev : (visible[0] ?? null);
+    });
+  }, [activeFilters]);
 
   if (loading) {
     return (

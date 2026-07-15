@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { STORAGE_KEYS } from '../../constants/storage';
-import { useAsyncData } from '../../hooks/useAsyncData';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Plus, Trash2, Briefcase, AlertCircle } from 'lucide-react';
 import { EmptyState } from '../../components/EmptyState';
 import { useNavigate } from 'react-router-dom';
@@ -26,26 +26,28 @@ export function PortfolioPage() {
 
   const selectedExchange = localStorage.getItem(STORAGE_KEYS.EXCHANGE) || 'india';
 
-  const {
-    data: holdings,
-    setData: setHoldings,
-    loading,
-    error: loadError,
-  } = useAsyncData<PortfolioHolding[]>(getHoldings, [], [], {
-    onError: err => showToast(toastMessage(err)),
+  const queryClient = useQueryClient();
+  const { data: holdings = [], isLoading: loading, error: loadError } = useQuery<PortfolioHolding[]>({
+    queryKey: ['holdings', selectedExchange],
+    queryFn: getHoldings,
+    staleTime: Infinity,
   });
+
+  useEffect(() => {
+    if (loadError) showToast(toastMessage(loadError));
+  }, [loadError]);
 
   const handleAdd = async (stock: PortfolioHolding) => {
     if (holdings.some(h => h.symbol === stock.symbol)) return;
 
     const optimistic: PortfolioHolding = { ...stock, addedAt: new Date().toISOString() };
-    setHoldings(prev => [...prev, optimistic]);
+    queryClient.setQueryData<PortfolioHolding[]>(['holdings', selectedExchange], prev => [...(prev ?? []), optimistic]);
     setShowModal(false);
 
     try {
       await addHolding(stock);
     } catch {
-      setHoldings(prev => prev.filter(h => h.symbol !== stock.symbol));
+      queryClient.setQueryData<PortfolioHolding[]>(['holdings', selectedExchange], prev => (prev ?? []).filter(h => h.symbol !== stock.symbol));
       showToast(`Failed to add ${stripSuffix(stock.symbol)}. Please try again.`);
     }
   };
@@ -56,13 +58,13 @@ export function PortfolioPage() {
     if (!confirmSymbol) return;
     const removed = holdings.find(h => h.symbol === confirmSymbol);
 
-    setHoldings(prev => prev.filter(h => h.symbol !== confirmSymbol));
+    queryClient.setQueryData<PortfolioHolding[]>(['holdings', selectedExchange], prev => (prev ?? []).filter(h => h.symbol !== confirmSymbol));
     setConfirmSymbol(null);
 
     try {
       await removeHolding(confirmSymbol);
     } catch {
-      if (removed) setHoldings(prev => [...prev, removed]);
+      if (removed) queryClient.setQueryData<PortfolioHolding[]>(['holdings', selectedExchange], prev => [...(prev ?? []), removed]);
       showToast(`Failed to remove ${stripSuffix(confirmSymbol)}. Please try again.`);
     }
   };

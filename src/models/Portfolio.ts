@@ -21,6 +21,11 @@ export interface PortfolioAlert extends PortfolioHolding {
   description?: string;
 }
 
+export interface AlertsResult {
+  alerts: PortfolioAlert[];
+  hasHoldings: boolean;
+}
+
 export const ALERT_LABELS: Record<keyof AlertFlags, string> = {
   bollingerBand: 'Bollinger Band',
   rsi:           'RSI',

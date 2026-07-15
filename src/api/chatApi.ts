@@ -5,8 +5,7 @@
 
 import { saveChatMessage } from './firebaseService';
 import { STORAGE_KEYS } from '../constants/storage';
-
-const API_BASE_URL = 'https://demo2-664110982097.us-central1.run.app';
+import { apiCall } from './backendService';
 
 // Generate a unique session ID for the user
 const generateSessionId = (): string => {
@@ -116,47 +115,30 @@ export async function sendChatMessage(message: string): Promise<ChatResponse> {
   const sessionId = generateSessionId();
   const startTime = Date.now();
   
-  try {
-    const response = await fetch(`${API_BASE_URL}/api/chat/respond`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        message,
-        session_id: sessionId,
-      }),
-    });
+  const data = await apiCall<ChatResponse>('/api/chat/respond', {
+    method: 'POST',
+    body: JSON.stringify({ message, session_id: sessionId }),
+  });
 
-    if (!response.ok) {
-      throw new Error(`Chat API Error: ${response.status}`);
+  const responseTime = Date.now() - startTime;
+
+  // Save to Firebase (non-blocking)
+  saveChatMessage(
+    sessionId,
+    message,
+    data,
+    {
+      classification: data.classification.action,
+      action: data.classification.action,
+      hasPlots: (data.plots?.length || 0) > 0,
+      hasNews: (data.news?.length || 0) > 0,
+      responseTime,
     }
+  ).catch(error => {
+    console.error('Failed to save message to Firebase:', error);
+  });
 
-    const data: ChatResponse = await response.json();
-    const responseTime = Date.now() - startTime;
-
-    // Save to Firebase (non-blocking)
-    saveChatMessage(
-      sessionId,
-      message,
-      data,
-      {
-        classification: data.classification.action,
-        action: data.classification.action,
-        hasPlots: (data.plots?.length || 0) > 0,
-        hasNews: (data.news?.length || 0) > 0,
-        responseTime,
-      }
-    ).catch(error => {
-      // Log error but don't fail the request
-      console.error('Failed to save message to Firebase:', error);
-    });
-
-    return data;
-  } catch (error) {
-    console.error('Chat API Error:', error);
-    throw error;
-  }
+  return data;
 }
 
 /**

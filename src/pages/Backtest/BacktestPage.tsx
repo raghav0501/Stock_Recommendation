@@ -17,6 +17,7 @@ import { useTheme } from '../../config/ThemeContext';
 import { getBaseChartOptions, getCandlestickOptions } from '../../config/chartConfig';
 import { createOscillatorPane, syncTimeScales, syncCrosshairs } from '../../utils/chartUtils';
 import stockUniverse from '../../data/Stock_universe.json';
+import { searchBySymbolAndName } from '../../utils/searchStocks';
 import { runBacktest, type BacktestResult, type PlotSignalPoint } from '../../api/backtestApi';
 import { toastMessage } from '../../utils/errorMessage';
 
@@ -379,27 +380,13 @@ export function BacktestPage() {
     (s) => s.exchange.toLowerCase() === selectedExchange.toLowerCase()
   );
 
-  const filteredStocks =
-    searchQuery.length > 0
-      ? exchangeStocks
-          .filter(
-            (s) =>
-              s.symbol.toLowerCase().includes(searchQuery.toLowerCase()) ||
-              s.company_name.toLowerCase().includes(searchQuery.toLowerCase())
-          )
-          .slice(0, 8)
-      : [];
+  const filteredStocks = searchQuery.length > 0
+    ? searchBySymbolAndName(exchangeStocks, searchQuery, s => s.symbol, s => s.company_name, 8)
+    : [];
 
-  const modalFilteredStocks =
-    modalStockQuery.length > 0
-      ? exchangeStocks
-          .filter(
-            (s) =>
-              s.symbol.toLowerCase().includes(modalStockQuery.toLowerCase()) ||
-              s.company_name.toLowerCase().includes(modalStockQuery.toLowerCase())
-          )
-          .slice(0, 8)
-      : [];
+  const modalFilteredStocks = modalStockQuery.length > 0
+    ? searchBySymbolAndName(exchangeStocks, modalStockQuery, s => s.symbol, s => s.company_name, 8)
+    : [];
 
   const indicator = entitledIndicators.find((p) => p.id === selectedIndicator);
   const fromDate = dateFromDay(fromDay);

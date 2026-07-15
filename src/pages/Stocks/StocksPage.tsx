@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAsyncData } from '../../hooks/useAsyncData';
-import { Settings } from 'lucide-react';
+import { Settings, Check } from 'lucide-react';
 import type { StockSummary } from '../../models/Stock';
 import type { TechnicalParameter } from '../../models/Market';
 import { getFilteredStocks } from '../../api/stockApi';
@@ -52,6 +52,20 @@ export function StocksPage({ parameters, allParameters, onParametersChange }: St
     setHasChanges(false);
   };
 
+  const strategyParams = allParameters.filter(p => p.category === 'Strategy');
+  const regularParams  = allParameters.filter(p => p.category !== 'Strategy');
+
+  const toggleStrategyParam = (paramId: string) => {
+    const withoutStrategy = tempParameters.filter(
+      p => allParameters.find(ap => ap.id === p)?.category !== 'Strategy'
+    );
+    const newParams = tempParameters.includes(paramId)
+      ? withoutStrategy
+      : [...withoutStrategy, paramId];
+    setTempParameters(newParams);
+    setHasChanges(JSON.stringify([...newParams].sort()) !== JSON.stringify([...parameters].sort()));
+  };
+
   // if (loading) {
   //   return (
   //     // <div className="flex items-center justify-center h-64">
@@ -99,6 +113,29 @@ export function StocksPage({ parameters, allParameters, onParametersChange }: St
               )} */}
             </div>
             
+            {/* Strategy filter chips */}
+            {strategyParams.length > 0 && (
+              <div className="flex items-center gap-1.5">
+                {strategyParams.map(p => {
+                  const isActive = tempParameters.includes(p.id);
+                  return (
+                    <button
+                      key={p.id}
+                      onClick={() => toggleStrategyParam(p.id)}
+                      className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium border transition-all ${
+                        isActive
+                          ? 'bg-amber-500/15 border-amber-500/40 text-amber-500 dark:text-amber-400'
+                          : 'bg-transparent border-light-border-primary dark:border-dark-border-primary text-light-text-secondary dark:text-dark-text-secondary hover:border-light-text-tertiary dark:hover:border-dark-text-tertiary'
+                      }`}
+                    >
+                      {isActive && <Check className="w-3 h-3" />}
+                      {p.name}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
             {/* Settings Wheel Icon with Dropdown */}
             <div className="relative">
               <button
@@ -128,7 +165,7 @@ export function StocksPage({ parameters, allParameters, onParametersChange }: St
                       {/* )} */}
                     </div>
                     <div className="space-y-2 max-h-72 overflow-y-auto">
-                      {allParameters.map(param => (
+                      {regularParams.map(param => (
                         <label key={param.id} className="flex items-start gap-3 border-b cursor-pointer hover:bg-light-bg-tertiary dark:hover:bg-dark-bg-tertiary p-2 rounded transition-colors">
                           <input
                             type="checkbox"
@@ -140,9 +177,6 @@ export function StocksPage({ parameters, allParameters, onParametersChange }: St
                             <div className="text-sm font-medium text-light-text-primary dark:text-dark-text-primary">
                               {param.name}
                             </div>
-                            {/* <div className="text-xs text-light-text-tertiary dark:text-dark-text-tertiary">
-                              {param.description}
-                            </div> */}
                           </div>
                         </label>
                       ))}

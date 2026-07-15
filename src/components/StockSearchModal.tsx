@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Search, X, Check, Plus } from 'lucide-react';
 import stockUniverse from '../data/Stock_universe.json';
+import { searchBySymbolAndName } from '../utils/searchStocks';
 
 interface StockEntry {
   symbol: string;
@@ -52,13 +53,7 @@ export function StockSearchModal({
     : universe;
 
   const results = query.trim().length > 0
-    ? exchangeFiltered
-        .filter(
-          (s) =>
-            s.symbol.toLowerCase().includes(query.toLowerCase()) ||
-            s.company_name?.toLowerCase().includes(query.toLowerCase())
-        )
-        .slice(0, 30)
+    ? searchBySymbolAndName(exchangeFiltered, query, s => s.symbol, s => s.company_name ?? '', 30)
     : [];
 
   const handleSelect = (s: StockEntry) => {
@@ -104,7 +99,7 @@ export function StockSearchModal({
 
           {query.trim().length > 0 && results.length === 0 && (
             <p className="text-center text-sm text-light-text-tertiary dark:text-dark-text-tertiary py-10">
-              No stocks found for &ldquo;{query}&rdquo;
+              Sorry, we do not support this stock yet.
             </p>
           )}
 

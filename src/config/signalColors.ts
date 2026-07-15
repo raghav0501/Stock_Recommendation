@@ -18,8 +18,8 @@ export const CHIP = {
 // ── Chart series colors ────────────────────────────────────────────
 export const CHART = {
   // Bollinger Band
-  bb:       'rgba(245,158,11,0.55)', // bands — semi-transparent amber
-  bbDelta:  '#f59e0b',               // delta zone boundaries — amber-400
+  bb:       '#f97316',               // bands — orange-500
+  bbDelta:  '#fb923c',               // delta zone boundaries — orange-400
 
   // RSI
   rsi:      '#8b5cf6',               // RSI line — purple-500

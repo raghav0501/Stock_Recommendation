@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import { useAsyncData } from '../../hooks/useAsyncData';
 import { Bell, RefreshCw, ExternalLink, Zap, Search, X, SlidersHorizontal, Briefcase } from 'lucide-react';
+import { searchBySymbolAndName } from '../../utils/searchStocks';
 import { useNavigate } from 'react-router-dom';
 import { Card } from '../../components/Card';
 import { Loader } from '../../components/Loader';
@@ -8,7 +9,7 @@ import { getAlerts, stripSuffix } from '../../api/portfolioApi';
 import { useToast } from '../../components/Toast';
 import { BADGE } from '../../config/signalColors';
 import { FilterChip } from '../../components/FilterChip';
-import type { PortfolioAlert, AlertFlags, AlertSignal } from '../../models/Portfolio';
+import type { AlertFlags, AlertSignal, AlertsResult } from '../../models/Portfolio';
 import { ALERT_LABELS, ALERT_COLORS } from '../../models/Portfolio';
 
 // ── Directional badge ──────────────────────────────────────────────
@@ -43,28 +44,29 @@ export function AlertsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilters, setActiveFilters] = useState<Set<keyof AlertFlags>>(new Set());
 
-  const { data: alerts, setData: setAlerts, loading } = useAsyncData<PortfolioAlert[]>(
+  const { data: alertsResult, setData: setAlertsResult, loading } = useAsyncData<AlertsResult>(
     getAlerts,
-    [],
+    { alerts: [], hasHoldings: false },
     [],
     {
       onError: () => showToast('Failed to load alerts.'),
       onSuccess: () => setLastRefreshed(new Date()),
     }
   );
+  const { alerts, hasHoldings } = alertsResult;
 
   const refreshAlerts = useCallback(async () => {
     setAlertsLoading(true);
     try {
-      const data = await getAlerts();
-      setAlerts(data);
+      const result = await getAlerts();
+      setAlertsResult(result);
       setLastRefreshed(new Date());
     } catch {
       showToast('Failed to fetch alerts. Please try again.');
     } finally {
       setAlertsLoading(false);
     }
-  }, [showToast, setAlerts]);
+  }, [showToast, setAlertsResult]);
 
   const toggleFilter = (key: keyof AlertFlags) => {
     setActiveFilters(prev => {
@@ -74,20 +76,16 @@ export function AlertsPage() {
     });
   };
 
-  const totalFlags = alerts.reduce((n, a) => n + activeSignals(a.alerts).length, 0);
   const hasEarlyAlert = (flags: AlertFlags) => EARLY_ALERT_KEYS.some(k => flags[k] !== 0);
 
-  const q = searchQuery.trim().toLowerCase();
-  const visibleStocks = alerts.filter(stock => {
-    const matchesSearch =
-      !q ||
-      stock.symbol.toLowerCase().includes(q) ||
-      stock.companyName.toLowerCase().includes(q);
-    const matchesFilter =
-      activeFilters.size === 0 ||
-      ALL_FILTER_KEYS.some(key => activeFilters.has(key) && stock.alerts[key] !== 0);
-    return matchesSearch && matchesFilter;
-  });
+  const searched = searchQuery.trim()
+    ? searchBySymbolAndName(alerts, searchQuery, s => s.symbol, s => s.companyName)
+    : alerts;
+
+  const visibleStocks = searched.filter(stock =>
+    activeFilters.size === 0 ||
+    ALL_FILTER_KEYS.some(key => activeFilters.has(key) && stock.alerts[key] !== 0)
+  );
 
   if (loading) {
     return (
@@ -114,60 +112,22 @@ export function AlertsPage() {
             </p>
           </div>
         </div>
-        <button
-          onClick={refreshAlerts}
-          disabled={alertsLoading}
-          className="flex items-center gap-1.5 text-xs text-light-text-tertiary dark:text-dark-text-tertiary hover:text-light-text-secondary dark:hover:text-dark-text-secondary transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-        >
-          <RefreshCw className={`w-3.5 h-3.5 ${alertsLoading ? 'animate-spin' : ''}`} />
-          Refresh
-        </button>
+        <div className="flex items-center gap-3">
+          {lastRefreshed && !alertsLoading && (
+            <span className="text-xs text-light-text-tertiary dark:text-dark-text-tertiary">
+              Last checked at {lastRefreshed.toLocaleTimeString()}
+            </span>
+          )}
+          <button
+            onClick={refreshAlerts}
+            disabled={alertsLoading}
+            className="flex items-center gap-1.5 text-xs text-light-text-tertiary dark:text-dark-text-tertiary hover:text-light-text-secondary dark:hover:text-dark-text-secondary transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${alertsLoading ? 'animate-spin' : ''}`} />
+            {alertsLoading ? 'Refreshing…' : 'Refresh'}
+          </button>
+        </div>
       </div>
-
-      {/* ── Summary card ─────────────────────────────────────────── */}
-      <Card className="p-5">
-        {alertsLoading ? (
-          <div className="flex items-center gap-2 text-sm text-light-text-tertiary dark:text-dark-text-tertiary">
-            <RefreshCw className="w-4 h-4 animate-spin" />
-            Fetching latest alerts…
-          </div>
-        ) : alerts.length === 0 ? (
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-full bg-emerald-500/15 flex items-center justify-center flex-shrink-0">
-              <Bell className="w-4 h-4 text-emerald-500" />
-            </div>
-            <div>
-              <p className="text-sm font-medium text-light-text-primary dark:text-dark-text-primary">
-                No alerts today
-              </p>
-              <p className="text-xs text-light-text-tertiary dark:text-dark-text-tertiary">
-                None of your tracked stocks have triggered an alert.
-                {lastRefreshed && ` Last checked at ${lastRefreshed.toLocaleTimeString()}.`}
-              </p>
-            </div>
-          </div>
-        ) : (
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-full bg-rose-500/15 flex items-center justify-center flex-shrink-0">
-              <Bell className="w-4 h-4 text-rose-400" />
-            </div>
-            <div>
-              <p className="text-sm font-medium text-light-text-primary dark:text-dark-text-primary">
-                {alerts.length} {alerts.length === 1 ? 'stock' : 'stocks'} from your portfolio with{' '}
-                {totalFlags} active {totalFlags === 1 ? 'alert' : 'alerts'}
-              </p>
-              <p className="text-xs text-light-text-tertiary dark:text-dark-text-tertiary">
-                Alerts are generated from your tracked portfolio stocks only.
-              </p>
-              {lastRefreshed && (
-                <p className="text-xs text-light-text-tertiary dark:text-dark-text-tertiary">
-                  Last checked at {lastRefreshed.toLocaleTimeString()}.
-                </p>
-              )}
-            </div>
-          </div>
-        )}
-      </Card>
 
       {/* ── Empty-state navigation ───────────────────────────────── */}
       {!loading && !alertsLoading && alerts.length === 0 && (
@@ -198,7 +158,7 @@ export function AlertsPage() {
               My Portfolio
             </p>
             <p className="text-xs text-light-text-tertiary dark:text-dark-text-tertiary leading-relaxed">
-              Add stocks to your portfolio to start tracking alerts for your holdings.
+              {hasHoldings ? 'No alerts today' : 'Add stocks to your portfolio.'}
             </p>
           </button>
         </div>
@@ -252,6 +212,26 @@ export function AlertsPage() {
         </div>
       )}
 
+      {/* ── Quick navigation ─────────────────────────────────────── */}
+      {/* {!alertsLoading && alerts.length > 0 && (
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => navigate('/technical-indicators')}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border border-light-border-primary dark:border-dark-border-primary text-light-text-secondary dark:text-dark-text-secondary hover:bg-light-bg-tertiary dark:hover:bg-dark-bg-tertiary transition-colors"
+          >
+            <SlidersHorizontal className="w-3.5 h-3.5" />
+            Screener
+          </button>
+          <button
+            onClick={() => navigate('/portfolio')}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border border-light-border-primary dark:border-dark-border-primary text-light-text-secondary dark:text-dark-text-secondary hover:bg-light-bg-tertiary dark:hover:bg-dark-bg-tertiary transition-colors"
+          >
+            <Briefcase className="w-3.5 h-3.5" />
+            Portfolio
+          </button>
+        </div>
+      )} */}
+
       {/* ── Alerted stocks list ───────────────────────────────────── */}
       {!alertsLoading && alerts.length > 0 && (
         <div className="space-y-3">
@@ -296,7 +276,14 @@ export function AlertsPage() {
                       </button>
                     )}
                     <button
-                      onClick={() => navigate(`/stocks/${stripSuffix(stock.symbol)}`, { state: { from: 'alerts', exchange: stock.exchange } })}
+                      onClick={() => {
+                        const alertIndicators: string[] = [];
+                        if (stock.alerts.bollingerBand !== 0) alertIndicators.push('bbands_20');
+                        if (stock.alerts.rsi !== 0)           alertIndicators.push('rsi_14');
+                        navigate(`/stocks/${stripSuffix(stock.symbol)}`, {
+                          state: { from: 'alerts', exchange: stock.exchange, alertIndicators },
+                        });
+                      }}
                       className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border border-light-border-primary dark:border-dark-border-primary text-light-text-secondary dark:text-dark-text-secondary hover:bg-light-bg-tertiary dark:hover:bg-dark-bg-tertiary transition-colors"
                     >
                       <ExternalLink className="w-3.5 h-3.5" />

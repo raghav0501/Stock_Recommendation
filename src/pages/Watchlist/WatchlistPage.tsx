@@ -4,6 +4,7 @@ import { Search } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Card } from '../../components/Card';
 import stockUniverse from '../../data/Stock_universe.json';
+import { searchBySymbolAndName } from '../../utils/searchStocks';
 
 interface StockEntry {
   symbol: string;
@@ -29,14 +30,9 @@ export function WatchlistPage() {
     (s) => s.exchange.toLowerCase() === selectedExchange.toLowerCase()
   );
 
-  const filtered = (query.trim()
-    ? stocks.filter(
-        (s) =>
-          s.symbol.toLowerCase().includes(query.toLowerCase()) ||
-          s.company_name.toLowerCase().includes(query.toLowerCase())
-      )
-    : stocks
-  ).slice().sort((a, b) => a.symbol.localeCompare(b.symbol));
+  const filtered = query.trim()
+    ? searchBySymbolAndName(stocks, query, s => s.symbol, s => s.company_name)
+    : [...stocks].sort((a, b) => a.symbol.localeCompare(b.symbol));
 
   return (
     <div className="space-y-6 animate-fade-in">

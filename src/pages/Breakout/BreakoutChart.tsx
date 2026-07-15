@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import {
+  CandlestickSeries,
   LineSeries,
   LineStyle,
   createChart,
@@ -61,10 +62,24 @@ export function EarlyAlertChart({ stock }: Props) {
       },
     });
 
-    // Close price line
+    // Candlestick series
+    const candleSeries = mainChart.addSeries(CandlestickSeries, {
+      upColor:         '#22c55e',
+      downColor:       '#ef4444',
+      borderUpColor:   '#22c55e',
+      borderDownColor: '#ef4444',
+      wickUpColor:     '#22c55e',
+      wickDownColor:   '#ef4444',
+    });
+    const candleData = stock.last5Days
+      .filter(d => nonZero(d.open) && nonZero(d.high) && nonZero(d.low) && nonZero(d.close))
+      .map(d => ({ time: d.date as any, open: d.open, high: d.high, low: d.low, close: d.close }));
+    candleSeries.setData(candleData);
+
+    // Thin close line on top of candles
     const closeSeries = mainChart.addSeries(LineSeries, {
-      color: isDark ? '#e2e8f0' : '#334155',
-      lineWidth: 2,
+      color: isDark ? 'rgba(226,232,240,0.55)' : 'rgba(51,65,85,0.55)',
+      lineWidth: 1,
       title: 'Close',
       priceLineVisible: true,
       lastValueVisible: true,
@@ -90,25 +105,25 @@ export function EarlyAlertChart({ stock }: Props) {
 
       if (bbUpperData.length) {
         mainChart.addSeries(LineSeries, {
-          color: CHART.bb, lineWidth: 1, title: 'BB Upper',
+          color: CHART.bb, lineWidth: 2, title: 'BB Upper',
           priceLineVisible: false, lastValueVisible: true,
         }).setData(bbUpperData);
       }
       if (bbLowerData.length) {
         mainChart.addSeries(LineSeries, {
-          color: CHART.bb, lineWidth: 1, title: 'BB Lower',
+          color: CHART.bb, lineWidth: 2, title: 'BB Lower',
           priceLineVisible: false, lastValueVisible: true,
         }).setData(bbLowerData);
       }
       if (bbUpperDeltaData.length) {
         mainChart.addSeries(LineSeries, {
-          color: CHART.bbDelta, lineWidth: 1, lineStyle: LineStyle.Dashed,
+          color: CHART.bbDelta, lineWidth: 2, lineStyle: LineStyle.Dashed,
           title: 'BB Δ Upper', priceLineVisible: false, lastValueVisible: false,
         }).setData(bbUpperDeltaData);
       }
       if (bbLowerDeltaData.length) {
         mainChart.addSeries(LineSeries, {
-          color: CHART.bbDelta, lineWidth: 1, lineStyle: LineStyle.Dashed,
+          color: CHART.bbDelta, lineWidth: 2, lineStyle: LineStyle.Dashed,
           title: 'BB Δ Lower', priceLineVisible: false, lastValueVisible: false,
         }).setData(bbLowerDeltaData);
       }

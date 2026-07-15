@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useAsyncData } from '../../hooks/useAsyncData';
+import { useQuery } from '@tanstack/react-query';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { ArrowLeft, ChevronDown, ChevronUp } from 'lucide-react';
 import {
@@ -57,9 +57,10 @@ export function StockDetailPage({ indicators }: StockDetailPageProps) {
   const location = useLocation();
   const { theme } = useTheme();
 
-  const navState = location.state as { from?: string; exchange?: string } | null;
+  const navState = location.state as { from?: string; exchange?: string; alertIndicators?: string[] } | null;
   const from = navState?.from;
   const stateExchange = navState?.exchange;
+  const effectiveIndicators = [...new Set([...indicators, ...(navState?.alertIndicators ?? [])])];
   const backLabel =
     from === 'watchlist'  ? 'Back to Watchlist' :
     from === 'early-alert' ? 'Back to Early Alert Scanner' :
@@ -90,16 +91,19 @@ export function StockDetailPage({ indicators }: StockDetailPageProps) {
   const [stockNewsLoading, setStockNewsLoading] = useState('');
   const [stockFundamentalsLoading, setStockFundamentalsLoading] = useState('');
   const [selectedIndicators, setSelectedIndicators] = useState<Set<string>>(
-    new Set(indicators)
+    new Set(effectiveIndicators)
   );
   const [showAllNews, setShowAllNews] = useState(false);
 
-  const { data: rawIndicators } = useAsyncData<Indicators[]>(
-    getIndicators,
-    [],
-    [],
-    { onError: err => showToast(toastMessage(err)) }
-  );
+  const { data: rawIndicators = [], error: indicatorsError } = useQuery<Indicators[]>({
+    queryKey: ['indicators'],
+    queryFn: getIndicators,
+    staleTime: Infinity,
+  });
+
+  useEffect(() => {
+    if (indicatorsError) showToast(toastMessage(indicatorsError));
+  }, [indicatorsError]);
   const chartableIndicators = useMemo<TechnicalParameter[]>(
     () => rawIndicators
       .filter(ind => ind.category.toLowerCase() !== 'strategy')
@@ -120,8 +124,8 @@ export function StockDetailPage({ indicators }: StockDetailPageProps) {
 
   // const chartableIndicators = parameters.filter(p => p.chartable);
   const sortedIndicators = [
-    ...chartableIndicators.filter((p) => indicators.includes(p.id)),
-    ...chartableIndicators.filter((p) => !indicators.includes(p.id)),
+    ...chartableIndicators.filter((p) => effectiveIndicators.includes(p.id)),
+    ...chartableIndicators.filter((p) => !effectiveIndicators.includes(p.id)),
   ];
 
   // ★ derived: does current selection include any oscillator?
@@ -135,7 +139,7 @@ export function StockDetailPage({ indicators }: StockDetailPageProps) {
     if (!symbol) return;
 
     setStockDetailLoading('Loading stock details...');
-    getStockDetail(symbol, indicators, stateExchange)
+    getStockDetail(symbol, effectiveIndicators, stateExchange)
       .then(data => setStockDetail(data))
       .catch(err => showToast(toastMessage(err)))
       .finally(() => setStockDetailLoading(''));
@@ -452,7 +456,7 @@ export function StockDetailPage({ indicators }: StockDetailPageProps) {
   const priceChangePercent = previousPrice !== 0 ? (priceChange / previousPrice) * 100 : 0;
   const changeInfo = formatChange(priceChange, priceChangePercent);
 
-  const selectedChartableNames = indicators
+  const selectedChartableNames = effectiveIndicators
     .map((id) => chartableIndicators.find((p) => p.id === id))
     .filter(Boolean)
     .map((p) => p!.name);
@@ -661,12 +665,21 @@ export function StockDetailPage({ indicators }: StockDetailPageProps) {
             News
           </h2>
           <span className="text-xs text-light-text-tertiary dark:text-dark-text-tertiary font-medium">
-            {stockNews?.news.length} Total
+            {stockNews?.news.length ?? 0} Total
           </span>
         </div>
         {stockNewsLoading ? (
           <div className="flex items-center justify-center h-32">
             <Loader size="md" text="Loading news..." />
+          </div>
+        ) : !stockNews || stockNews.news.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-12 text-center gap-2">
+            <p className="text-sm font-medium text-light-text-secondary dark:text-dark-text-secondary">
+              No news found for this stock.
+            </p>
+            {/* <p className="text-xs text-light-text-tertiary dark:text-dark-text-tertiary">
+              Check back later or visit the stock's investor relations page directly.
+            </p> */}
           </div>
         ) : (
           <>
